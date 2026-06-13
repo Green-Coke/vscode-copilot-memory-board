@@ -7,9 +7,12 @@
 // - Narrow (<500px / sidebar): Single column with breadcrumb navigation
 // ============================================================================
 
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, FolderGit2, MessageSquare, Terminal } from "lucide-react";
+import { 
+  ChevronLeft, FolderGit2, MessageSquare, Terminal,
+  ChevronDown, PanelLeftClose, PanelLeftOpen
+} from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Navigation breadcrumb for narrow mode
@@ -85,23 +88,59 @@ export function Panel({ title, icon, children, className, action }: PanelProps) 
 // App header
 // ---------------------------------------------------------------------------
 
+/**
+ * 仓库选择与状态数据接口定义
+ */
 interface AppHeaderProps {
   stats?: {
     repos: number;
     sessions: number;
     entries: number;
   };
+  repoPanelCollapsed?: boolean;
+  setRepoPanelCollapsed?: (collapsed: boolean) => void;
+  repos?: any[];
+  selectedRepo?: any;
+  onSelectRepo?: (repo: any) => void;
 }
 
-export function AppHeader({ stats }: AppHeaderProps) {
+/**
+ * 应用程序顶部 Header 组件
+ * 包含品牌 Logo、当前仓库切换下拉菜单、仓库栏展开折叠按钮以及数据统计
+ */
+export function AppHeader({ 
+  stats, 
+  repoPanelCollapsed, 
+  setRepoPanelCollapsed, 
+  repos, 
+  selectedRepo, 
+  onSelectRepo 
+}: AppHeaderProps) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   return (
     <header className="relative flex items-center justify-between px-4 py-3 border-b border-border-default bg-surface-1/90 backdrop-blur-md z-30">
       {/* Glow highlight */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-indigo/60 to-transparent" />
       
       <div className="flex items-center gap-3">
+        {/* Toggle Button / 侧边仓库栏折叠展开按钮 */}
+        {setRepoPanelCollapsed !== undefined && (
+          <button
+            onClick={() => setRepoPanelCollapsed(!repoPanelCollapsed)}
+            className="p-1.5 rounded hover:bg-surface-3 transition-colors cursor-pointer text-text-secondary hover:text-brand-indigo flex items-center justify-center shrink-0"
+            title={repoPanelCollapsed ? "展开仓库栏" : "折叠仓库栏"}
+          >
+            {repoPanelCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
+        )}
+
         {/* Glowing Neural Network SVG Logo */}
-        <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-surface-2 border border-border-default shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)]">
+        <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-surface-2 border border-border-default shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)] shrink-0">
           <svg viewBox="0 0 100 100" className="w-5 h-5 text-brand-indigo animate-brain-glow" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M50 20 C32 20, 24 35, 24 50 C24 65, 32 80, 50 80 C68 80, 76 65, 76 50 C76 35, 68 20, 50 20 Z" />
             <path d="M50 20 L50 80" />
@@ -121,7 +160,7 @@ export function AppHeader({ stats }: AppHeaderProps) {
           <span className="absolute -inset-0.5 rounded-lg border border-brand-indigo/20 animate-pulse" />
         </div>
         <div>
-          <h1 className="text-sm font-extrabold tracking-tight text-text-primary font-display flex items-center gap-1.5">
+          <h1 className="text-sm font-extrabold tracking-tight text-text-primary font-display flex items-center gap-1.5 leading-none">
             Memory Board
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-brand-indigo/10 border border-brand-indigo/20 text-brand-indigo leading-none font-semibold">
               v1.0.0
@@ -136,6 +175,52 @@ export function AppHeader({ stats }: AppHeaderProps) {
 
       {/* Connection Indicator & Optional Stats */}
       <div className="flex items-center gap-4">
+        {/* Repo Switcher / 顶部仓库快速切换器 */}
+        {repos && repos.length > 0 && (
+          <div className="relative font-sans text-xs">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded bg-surface-2 border border-border-default hover:border-brand-indigo transition-colors cursor-pointer text-text-primary font-medium"
+            >
+              <FolderGit2 className="w-3.5 h-3.5 text-brand-indigo" />
+              <span className="max-w-[120px] truncate">{selectedRepo ? selectedRepo.name : "选择仓库..."}</span>
+              <ChevronDown className={cn("w-3 h-3 text-text-muted transition-transform duration-200", isDropdownOpen && "rotate-180")} />
+            </button>
+            
+            {isDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                <div className="absolute right-0 mt-1.5 w-64 max-h-80 overflow-y-auto rounded-lg border border-border-default bg-surface-2 shadow-xl z-50 p-1 flex flex-col gap-1 backdrop-blur-md">
+                  <div className="px-2 py-1.5 text-[10px] font-bold tracking-widest text-text-muted font-display uppercase border-b border-border-subtle mb-1">
+                    切换仓库
+                  </div>
+                  {repos.map((repo) => {
+                    const isSelected = selectedRepo?.id === repo.id;
+                    return (
+                      <button
+                        key={repo.id}
+                        onClick={() => {
+                          onSelectRepo?.(repo);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "flex flex-col px-2.5 py-2 rounded text-left cursor-pointer transition-colors w-full",
+                          isSelected
+                            ? "bg-brand-indigo/10 text-brand-indigo border border-brand-indigo/20"
+                            : "hover:bg-surface-3/60 text-text-primary border border-transparent"
+                        )}
+                      >
+                        <span className="font-bold text-xs truncate w-full">{repo.name}</span>
+                        <span className="text-[9px] text-text-secondary truncate w-full font-mono mt-0.5">{repo.path}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {stats && (
           <div className="hidden sm:flex items-center gap-3 font-mono text-[10px] text-text-secondary border-r border-border-default pr-4">
             <span className="flex items-center gap-1">
@@ -148,7 +233,7 @@ export function AppHeader({ stats }: AppHeaderProps) {
             </span>
           </div>
         )}
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-2 border border-border-default">
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-2 border border-border-default shrink-0">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -168,6 +253,9 @@ export function AppHeader({ stats }: AppHeaderProps) {
 
 export type ViewMode = "repos" | "sessions" | "entries";
 
+/**
+ * 响应式布局容器 Props 接口
+ */
 interface LayoutProps {
   repoPanel: ReactNode;
   sessionPanel: ReactNode;
@@ -175,8 +263,17 @@ interface LayoutProps {
   breadcrumbItems?: BreadcrumbProps["items"];
   currentView: ViewMode;
   stats?: AppHeaderProps["stats"];
+  repoPanelCollapsed?: boolean;
+  setRepoPanelCollapsed?: (collapsed: boolean) => void;
+  repos?: any[];
+  selectedRepo?: any;
+  onSelectRepo?: (repo: any) => void;
 }
 
+/**
+ * 自适应响应式三栏/双栏/单栏布局组件
+ * 支持仓库栏折叠并整合顶部 Header
+ */
 export function AdaptiveLayout({
   repoPanel,
   sessionPanel,
@@ -184,6 +281,11 @@ export function AdaptiveLayout({
   breadcrumbItems,
   currentView,
   stats,
+  repoPanelCollapsed = false,
+  setRepoPanelCollapsed,
+  repos,
+  selectedRepo,
+  onSelectRepo,
 }: LayoutProps) {
   return (
     <div className="flex flex-col h-full relative overflow-hidden select-none bg-surface-0">
@@ -192,16 +294,28 @@ export function AdaptiveLayout({
       <div className="cyber-grid" />
 
       {/* Main Top Header */}
-      <AppHeader stats={stats} />
+      <AppHeader 
+        stats={stats} 
+        repoPanelCollapsed={repoPanelCollapsed}
+        setRepoPanelCollapsed={setRepoPanelCollapsed}
+        repos={repos}
+        selectedRepo={selectedRepo}
+        onSelectRepo={onSelectRepo}
+      />
 
       {/* 宽屏布局（≥900px）：三栏比例自适应布局，带有最小/最大宽度限制 */}
       <div className="hidden min-[900px]:flex flex-1 min-h-0 z-10 relative">
-        {/* Repositories 仓库栏：占宽约 20%，最小 220px，最大 320px */}
-        <div className="w-[20%] min-w-[220px] max-w-[320px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
-          {repoPanel}
-        </div>
-        {/* Sessions 会话栏：占宽约 25%，最小 240px，最大 360px */}
-        <div className="w-[25%] min-w-[240px] max-w-[360px] shrink-0 border-r border-border-default/80 bg-surface-1/30 backdrop-blur-sm">
+        {/* Repositories 仓库栏：占宽约 20%，最小 220px，最大 420px */}
+        {!repoPanelCollapsed && (
+          <div className="w-[20%] min-w-[220px] max-w-[420px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
+            {repoPanel}
+          </div>
+        )}
+        {/* Sessions 会话栏：在折叠时加宽占约 30%，最小 240px，最大 480px / 440px */}
+        <div className={cn(
+          "shrink-0 border-r border-border-default/80 bg-surface-1/30 backdrop-blur-sm",
+          repoPanelCollapsed ? "w-[30%] min-w-[260px] max-w-[480px]" : "w-[25%] min-w-[240px] max-w-[440px]"
+        )}>
           {sessionPanel}
         </div>
         {/* Memory Entries 内存条目栏：填充剩余所有宽度 */}
@@ -212,9 +326,9 @@ export function AdaptiveLayout({
 
       {/* 中等屏幕布局（500–899px）：双栏比例自适应布局 */}
       <div className="hidden min-[500px]:flex min-[900px]:hidden flex-1 min-h-0 z-10 relative">
-        {/* 左侧栏：占宽约 30%，最小 200px，最大 300px */}
-        <div className="w-[30%] min-w-[200px] max-w-[300px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
-          {currentView === "repos" ? repoPanel : sessionPanel}
+        {/* 左侧栏：占宽约 30%，最小 200px，最大 360px */}
+        <div className="w-[30%] min-w-[200px] max-w-[360px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
+          {!repoPanelCollapsed && currentView === "repos" ? repoPanel : sessionPanel}
         </div>
         {/* 右侧主视口栏：填充剩余宽度 */}
         <div className="flex-1 min-w-0 bg-surface-1/20">

@@ -108,18 +108,18 @@ export function SessionList({
       {/* Search Input Box */}
       <div className="p-3 border-b border-border-default bg-surface-1/20 z-10 relative">
         <div className="relative flex items-center w-full">
-          <Search className="absolute left-2.5 w-3.5 h-3.5 text-text-muted" />
+          <Search className="absolute left-3 w-4 h-4 text-text-muted" />
           <input
             type="text"
             placeholder={`Search sessions in ${repoName}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="cyber-input w-full pl-8 pr-8 py-1.5 font-sans font-medium placeholder-text-muted/60"
+            className="cyber-input w-full pl-10 pr-10 py-1.5 font-sans font-medium placeholder-text-muted/60"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer"
+              className="absolute right-3 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
             >
               <X className="w-3 h-3" />
             </button>

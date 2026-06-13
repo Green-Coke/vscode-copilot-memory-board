@@ -9,37 +9,37 @@
    ============================================================================ */
 
 :root {
-  /* 独立（Standalone）模式下的全新 Tokyo Night（东京之夜）雅致深曜蓝配色体系 */
-  --ui-surface-0: #1a1b26; /* 主视口背景色，深曜蓝灰 */
-  --ui-surface-1: #16161e; /* 侧边栏/列表区背景色，更深蓝色，形成明暗纵深 */
-  --ui-surface-2: #20212d; /* 正常卡片底色及输入框聚焦背景 */
-  --ui-surface-3: #2f3549; /* 卡片悬停、列表选中及二级容器底色 */
-  --ui-surface-4: #444b6a; /* 强调背景及较亮色块 */
+  /* 独立（Standalone）模式下的全新马卡龙温暖柔和浅色系配色体系 */
+  --ui-surface-0: #fff9d2; /* 页面最底层背景色，奶黄色 */
+  --ui-surface-1: #ffebcc; /* 侧边栏/列表区背景色，蜜桃杏色，形成立体过渡 */
+  --ui-surface-2: #ffffff; /* 正常卡片与内容区的纯白背景，保证良好对比度 */
+  --ui-surface-3: #bfddf0; /* 卡片悬停、列表项选中的淡天蓝色背景 */
+  --ui-surface-4: #8cc0eb; /* 主要强调色背景、滚动条滑块颜色，天蓝色 */
 
-  /* 护眼柔和前景色 */
-  --ui-text-primary: #c0caf5;   /* 主文本，软调淡蓝灰 */
-  --ui-text-secondary: #a9b1d6; /* 次级文本，中灰色 */
-  --ui-text-muted: #565f89;     /* 禁用或极暗淡注释文本 */
+  /* 浅色主题下的高对比度暗色文本 */
+  --ui-text-primary: #1e293b;   /* 主文本，深石板灰 */
+  --ui-text-secondary: #475569; /* 次级文本，中石板灰 */
+  --ui-text-muted: #64748b;     /* 禁用或暗淡说明文本 */
 
-  /* 磨砂玻璃与分界边框 Token */
-  --ui-border-default: rgba(86, 95, 137, 0.25); /* 默认边框，使用灰蓝 */
-  --ui-border-hover: rgba(122, 162, 247, 0.45);   /* 悬停态边框，软蓝色发光 */
-  --ui-border-subtle: rgba(86, 95, 137, 0.12);   /* 暗淡分割边框 */
+  /* 磨砂玻璃与淡蓝分界边框 Token */
+  --ui-border-default: rgba(140, 192, 235, 0.25); /* 默认边框，使用半透明天蓝 */
+  --ui-border-hover: rgba(140, 192, 235, 0.6);    /* 悬停态边框，更明显的天蓝 */
+  --ui-border-subtle: rgba(140, 192, 235, 0.12);   /* 暗淡分割边框 */
 
-  /* 核心突出与功能强调色 */
-  --ui-brand-indigo: #7aa2f7;  /* 柔和天蓝品牌色 */
-  --ui-brand-purple: #bb9af3;  /* 雅致丁香紫 */
-  --ui-accent-cyan: #7dcfff;    /* 亮天青色 */
-  --ui-accent-pink: #f7768e;    /* 玫瑰红/粉红 */
+  /* 核心功能强调与品牌配色 */
+  --ui-brand-indigo: #8cc0eb;  /* 婴儿天蓝品牌色 */
+  --ui-brand-purple: #c084fc;  /* 柔和粉紫色 */
+  --ui-accent-cyan: #38bdf8;    /* 亮天青色 */
+  --ui-accent-pink: #fb7185;    /* 柔桃粉色 */
 
-  /* 各分类标记颜色，采用更柔和低饱和度的专业配色 */
-  --ui-category-preference: #e0af68; /* 温暖金橙 */
-  --ui-category-context: #7aa2f7;    /* 天蓝色 */
-  --ui-category-instruction: #f7768e;  /* 玫瑰粉 */
-  --ui-category-knowledge: #9ece6a;    /* 柔和嫩绿 */
-  --ui-category-pattern: #9d7cd8;      /* 薰衣草紫 */
-  --ui-category-unknown: #565f89;      /* 灰蓝色 */
-  --ui-category-bookmark: #f7768e;     /* 玫瑰粉 */
+  /* 各分类标记颜色，浅色模式下选用高对比度且协调的配色 */
+  --ui-category-preference: #b45309; /* 深金橙色 */
+  --ui-category-context: #1d4ed8;      /* 靛蓝色 */
+  --ui-category-instruction: #b91c1c;  /* 红色 */
+  --ui-category-knowledge: #047857;    /* 深翡翠绿 */
+  --ui-category-pattern: #7e22ce;      /* 深紫罗兰色 */
+  --ui-category-unknown: #475569;      /* 灰蓝色 */
+  --ui-category-bookmark: #be123c;     /* 深玫瑰红 */
 }
 
 /* VS Code 运行环境下的主题变量映射 */
@@ -140,6 +140,22 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (min-width: 1280px) {
+  html {
+    font-size: 14px;
+  }
+}
+@media (min-width: 1600px) {
+  html {
+    font-size: 15px;
+  }
+}
+@media (min-width: 1920px) {
+  html {
+    font-size: 17px;
+  }
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--color-surface-0);
@@ -219,7 +235,7 @@ body {
   animation: float-slow 25s infinite alternate-reverse var(--ease-in-out-sine);
 }
 
-/* 添加额外的网格叠加层，使页面具有集成开发环境（IDE）的质感与外观 */
+/* 默认背景网格，适合浅色温暖色调，使用淡天蓝色线条 */
 .cyber-grid {
   position: absolute;
   top: 0;
@@ -227,45 +243,63 @@ body {
   right: 0;
   bottom: 0;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    linear-gradient(to right, rgba(140, 192, 235, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(140, 192, 235, 0.12) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   z-index: 1;
   opacity: 0.85;
 }
 
-/* VS Code 浅色主题下的背景网格颜色，使用微弱的黑色网格以适应白色底色 */
-body.vscode-light .cyber-grid {
+/* VS Code 深色与高对比度主题下的背景网格颜色，使用微弱的白色网格线 */
+body.vscode-dark .cyber-grid,
+body.vscode-high-contrast .cyber-grid {
   background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
 }
 
 /* ============================================================================
    Glassmorphism Styles
    ============================================================================ */
 
+/* 磨砂玻璃卡片面板，浅色模式下默认使用纯白磨砂质感和淡天蓝色软投影 */
 .glass-panel {
-  background: rgba(16, 16, 24, 0.45);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(20px) saturate(140%);
   border: 1px solid var(--color-border-default);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 30px rgba(140, 192, 235, 0.15);
   transition: all 0.3s var(--ease-out-expo);
 }
 
 .glass-panel-hover:hover {
-  border-color: rgba(99, 102, 241, 0.25);
+  border-color: rgba(140, 192, 235, 0.5);
   box-shadow: 
-    0 4px 30px rgba(0, 0, 0, 0.5),
-    0 0 15px -3px rgba(99, 102, 241, 0.06);
+    0 6px 30px rgba(140, 192, 235, 0.25),
+    0 0 15px -3px rgba(140, 192, 235, 0.1);
   transform: translateY(-1px);
 }
 
+/* VS Code 深色与高对比度下的磨砂卡片样式微调，恢复暗色质感 */
+body.vscode-dark .glass-panel,
+body.vscode-high-contrast .glass-panel {
+  background: rgba(16, 16, 24, 0.45);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+}
+
+body.vscode-dark .glass-panel-hover:hover,
+body.vscode-high-contrast .glass-panel-hover:hover {
+  border-color: var(--color-border-hover);
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.5),
+    0 0 15px -3px rgba(122, 162, 247, 0.06);
+}
+
 /* Input boxes styling */
+/* 输入框默认样式，浅色磨砂质感 */
 .cyber-input {
-  background: rgba(8, 8, 12, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(140, 192, 235, 0.3);
   border-radius: 6px;
   color: var(--color-text-primary);
   font-size: 12px;
@@ -275,8 +309,21 @@ body.vscode-light .cyber-grid {
 .cyber-input:focus {
   outline: none;
   border-color: var(--color-brand-indigo);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 2px rgba(140, 192, 235, 0.2);
+  background: rgba(255, 255, 255, 1);
+}
+
+/* VS Code 深色与高对比度主题下的输入框背景，恢复深色 */
+body.vscode-dark .cyber-input,
+body.vscode-high-contrast .cyber-input {
+  background: rgba(8, 8, 12, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+body.vscode-dark .cyber-input:focus,
+body.vscode-high-contrast .cyber-input:focus {
   background: rgba(8, 8, 12, 0.8);
+  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
 }
 
 /* ============================================================================

@@ -29,6 +29,7 @@ export function App() {
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [currentView, setCurrentView] = useState<ViewMode>("repos");
+  const [repoPanelCollapsed, setRepoPanelCollapsed] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Data Fetching
@@ -50,6 +51,7 @@ export function App() {
     setSelectedRepo(repo);
     setSelectedSession(null);
     setCurrentView("sessions");
+    setRepoPanelCollapsed(true);
   }, []);
 
   const handleSelectSession = useCallback((session: Session) => {
@@ -61,6 +63,7 @@ export function App() {
     setSelectedRepo(null);
     setSelectedSession(null);
     setCurrentView("repos");
+    setRepoPanelCollapsed(false);
   }, []);
 
   const handleBackToSessions = useCallback(() => {
@@ -108,6 +111,11 @@ export function App() {
       currentView={currentView}
       breadcrumbItems={breadcrumbItems}
       stats={stats}
+      repoPanelCollapsed={repoPanelCollapsed}
+      setRepoPanelCollapsed={setRepoPanelCollapsed}
+      repos={repos ?? []}
+      selectedRepo={selectedRepo}
+      onSelectRepo={handleSelectRepo}
       repoPanel={
         <Panel
           title="Repositories"
