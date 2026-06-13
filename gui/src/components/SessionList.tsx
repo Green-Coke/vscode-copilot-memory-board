@@ -160,10 +160,10 @@ export function SessionList({
         <div className="relative flex items-center w-full">
           <input
             type="text"
-            placeholder={`Search sessions in ${repoName}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium placeholder-text-muted/60"
+            className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
+            aria-label="搜索会话"
           />
           {/* 搜索放大镜固定在右侧；存在搜索词时清空按钮自动向左避让，避免重叠 */}
           {searchQuery ? (

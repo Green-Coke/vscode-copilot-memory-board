@@ -30,11 +30,12 @@ test.describe("头部右上角统计与连接指示器", () => {
     await expect(stats).toContainText("sessions");
   });
 
-  test("Connected 徽标可见", async ({ page }) => {
+  test("连接状态指示器可见（保留状态点，不再显示 Connected 文案）", async ({ page }) => {
     await page.goto("/");
     const connected = page.locator('[data-testid="header-connected"]').first();
     await expect(connected).toBeVisible();
-    await expect(connected).toContainText("Connected");
+    // 文案已移除，只保留状态点
+    await expect(connected).not.toContainText("Connected");
   });
 });
 

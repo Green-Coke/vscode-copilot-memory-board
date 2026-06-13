@@ -302,7 +302,13 @@ async function handleMockRequest(
 // ---------------------------------------------------------------------------
 
 let initialized = false;
-let currentEnvironment: BridgeEnvironment = "standalone";
+
+/**
+ * 在模块加载阶段即完成环境探测，以便 UI 组件在 App.initBridge() 之前
+ * 调用 getBridgeEnvironment() 也能拿到正确结果（例如渲染分支决策）。
+ */
+let currentEnvironment: BridgeEnvironment =
+  typeof acquireVsCodeApi === "function" ? "vscode" : detectEnvironment();
 
 /**
  * Initialize the message bridge. Must be called once at app startup.
@@ -310,6 +316,7 @@ let currentEnvironment: BridgeEnvironment = "standalone";
 export function initBridge(): BridgeEnvironment {
   if (initialized) return currentEnvironment;
 
+  // 重新探测一次，确保 DOM 完全就绪后的环境仍然准确
   currentEnvironment = detectEnvironment();
   console.log(`[Bridge] Environment detected: ${currentEnvironment}`);
 

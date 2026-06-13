@@ -81,6 +81,20 @@ export function App() {
   }, []);
 
   /**
+   * 仓库栏切换统一入口：
+   * - 宽屏：仅折叠 / 展开仓库列，保留当前选中仓库与会话。
+   * - 中屏 / 窄屏：若当前在 sessions 或 entries 视图，点击则回到仓库列表，
+   *   保证“选仓库后点左上角按钮没有效果”的 bug 不再出现。
+   */
+  const handleToggleRepoBar = useCallback(() => {
+    if (window.matchMedia("(min-width: 900px)").matches) {
+      setRepoPanelCollapsed((prev) => !prev);
+      return;
+    }
+    setCurrentView((prev) => (prev === "repos" ? "sessions" : "repos"));
+  }, []);
+
+  /**
    * 切换查看仓库级目录：进入时清空当前 session，右侧展示整个仓库的骨架
    */
   const handleViewRepoFiles = useCallback(() => {
@@ -146,6 +160,7 @@ export function App() {
       stats={stats}
       repoPanelCollapsed={repoPanelCollapsed}
       setRepoPanelCollapsed={setRepoPanelCollapsed}
+      onToggleRepoBar={handleToggleRepoBar}
       repos={repos ?? []}
       selectedRepo={selectedRepo}
       onSelectRepo={handleSelectRepo}

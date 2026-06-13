@@ -520,9 +520,9 @@ export class MemoryBoardViewProvider extends MemoryBoardWebviewCore {
 /**
  * 独立 WebviewPanel 管理者。
  *
- * 通过命令 `memoryBoard.openInPanel` 调用 {@link open}，在编辑器区域
- * 打开一个独立的 WebviewPanel。这种形态天然可以作为标签页移动、拆分、
- * 拖拽到编辑器组的任意位置，满足“像其他扩展一样可移动”的需求。
+ * 通过命令 `memoryBoard.moveToEditor` / `memoryBoard.openInPanel` 调用 {@link open}，
+ * 在编辑器区域打开一个独立的 WebviewPanel。配合 extension.ts 中的 setContext，
+ * 实现“迁移到编辑器”语义：面板打开时侧边栏视图隐藏，面板关闭时视图恢复。
  * 当前实现采用单实例策略：再次调用命令会复用已存在的 panel。
  */
 export class MemoryBoardPanelManager extends MemoryBoardWebviewCore {
@@ -535,14 +535,14 @@ export class MemoryBoardPanelManager extends MemoryBoardWebviewCore {
   }
 
   /**
-   * 打开（或聚焦）独立的 Memory Board 面板
-   * 已存在则直接 reveal；不存在则新建并装配 GUI
+   * 打开（或聚焦）独立的 Memory Board 面板。
+   * 已存在则直接 reveal；不存在则新建并装配 GUI。
    */
-  public open(): void {
+  public open(): Promise<void> {
     // 单实例复用：已存在时直接聚焦，避免多窗口同时写 workspaceState 状态歧义
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.Active, false);
-      return;
+      return Promise.resolve();
     }
 
     // 新建独立面板，作为编辑器标签页呈现（可移动/拆分/重排）
@@ -570,13 +570,33 @@ export class MemoryBoardPanelManager extends MemoryBoardWebviewCore {
     // 复用共享装配流程
     this.attachWebview(panel.webview);
 
-    // 面板关闭时清理引用，允许下次重新打开
+    // 面板关闭时：清理引用并恢复侧边栏视图（迁移回侧边栏）
     panel.onDidDispose(
       () => {
         this.panel = undefined;
+        // 把 movedToPanel 置回 false，使侧边栏视图重新可见
+        vscode.commands
+          .executeCommand("setContext", "memoryBoard.movedToPanel", false)
+          .then(undefined, (err) =>
+            console.warn(
+              "[Memory Board] 恢复侧边栏视图的 setContext 调用失败:",
+              err
+            )
+          );
       },
       undefined,
       this.context.subscriptions
     );
+
+    return Promise.resolve();
+  }
+
+  /**
+   * 面板刷新命令入口：如果面板已打开，重新扫描并推送仓库数据
+   */
+  public async refresh(): Promise<void> {
+    if (this.panel) {
+      await super.refresh(this.panel.webview);
+    }
   }
 }

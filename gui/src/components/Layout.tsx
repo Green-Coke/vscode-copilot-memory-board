@@ -9,10 +9,17 @@
 
 import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/utils";
-import { 
+import { getBridgeEnvironment } from "@/lib/bridge";
+import {
   ChevronLeft, FolderGit2, MessageSquare, Terminal,
   ChevronDown, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
+
+/**
+ * 当前运行环境是否为 VS Code 插件模式。
+ * bridge.ts 在模块加载阶段即完成探测，因此这里可直接同步读取。
+ */
+const isVscode = getBridgeEnvironment() === "vscode";
 
 // ---------------------------------------------------------------------------
 // Navigation breadcrumb for narrow mode
@@ -241,13 +248,11 @@ export function AppHeader({
         <div
           data-testid="header-connected"
           className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-surface-2 border border-border-default shrink-0"
+          title="已连接"
         >
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <span className="text-[11px] font-mono font-bold tracking-wider text-emerald-400 uppercase">
-            Connected
           </span>
         </div>
       </div>
@@ -273,14 +278,50 @@ interface LayoutProps {
   stats?: AppHeaderProps["stats"];
   repoPanelCollapsed?: boolean;
   setRepoPanelCollapsed?: (collapsed: boolean) => void;
+  /**
+   * 统一的仓库栏切换处理器：在宽屏、中屏、窄屏下都负责显隐仓库面板，
+   * 调用方需自行处理状态编排（例如从 entries 回到 repos 视图）。
+   */
+  onToggleRepoBar?: () => void;
   repos?: any[];
   selectedRepo?: any;
   onSelectRepo?: (repo: any) => void;
 }
 
 /**
+ * 仓库栏切换按钮：在 VS Code 插件模式下没有 AppHeader，
+ * 由这个紧凑按钮提供恢复入口，放在当前可见列的固定上沿。
+ */
+function RepoBarToggleButton({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className={cn(
+        "p-1.5 rounded hover:bg-surface-3 transition-colors cursor-pointer",
+        "text-text-secondary hover:text-brand-indigo flex items-center justify-center shrink-0"
+      )}
+      title={collapsed ? "展开仓库栏" : "折叠仓库栏"}
+    >
+      {collapsed ? (
+        <PanelLeftOpen className="w-4 h-4" />
+      ) : (
+        <PanelLeftClose className="w-4 h-4" />
+      )}
+    </button>
+  );
+}
+
+/**
  * 自适应响应式三栏/双栏/单栏布局组件
- * 支持仓库栏折叠并整合顶部 Header
+ * 支持仓库栏折叠并整合顶部 Header。
+ * - standalone 模式：保留完整品牌 AppHeader。
+ * - VS Code 插件模式：不渲染 AppHeader，仓库栏切换按钮迁移到下方分区上沿。
  */
 export function AdaptiveLayout({
   repoPanel,
@@ -291,28 +332,53 @@ export function AdaptiveLayout({
   stats,
   repoPanelCollapsed = false,
   setRepoPanelCollapsed,
+  onToggleRepoBar,
   repos,
   selectedRepo,
   onSelectRepo,
 }: LayoutProps) {
+  /**
+   * 统一的折叠切换入口：
+   * - 提供了 onToggleRepoBar 时，状态编排交给上层（App）。
+   * - 否则回退到只切 setRepoPanelCollapsed，保持向后兼容。
+   */
+  const handleToggle = () => {
+    if (onToggleRepoBar) {
+      onToggleRepoBar();
+    } else {
+      setRepoPanelCollapsed?.(!repoPanelCollapsed);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full relative overflow-hidden select-none bg-surface-0">
       {/* Matrix Mesh Backdrops */}
       <div className="cyber-bg" />
       <div className="cyber-grid" />
 
-      {/* Main Top Header */}
-      <AppHeader 
-        stats={stats} 
-        repoPanelCollapsed={repoPanelCollapsed}
-        setRepoPanelCollapsed={setRepoPanelCollapsed}
-        repos={repos}
-        selectedRepo={selectedRepo}
-        onSelectRepo={onSelectRepo}
-      />
+      {/* Main Top Header —— 仅 standalone 模式渲染完整品牌头部；VS Code 模式去掉整条顶栏 */}
+      {!isVscode && (
+        <AppHeader
+          stats={stats}
+          repoPanelCollapsed={repoPanelCollapsed}
+          setRepoPanelCollapsed={setRepoPanelCollapsed}
+          repos={repos}
+          selectedRepo={selectedRepo}
+          onSelectRepo={onSelectRepo}
+        />
+      )}
 
       {/* 宽屏布局（≥900px）：三栏比例自适应布局，带有最小/最大宽度限制 */}
       <div className="hidden min-[900px]:flex flex-1 min-h-0 z-10 relative">
+        {/* VS Code 模式下：在当前可见区间上沿放仓库栏切换按钮 */}
+        {isVscode && (
+          <div className="absolute top-2 left-2 z-20">
+            <RepoBarToggleButton
+              collapsed={repoPanelCollapsed}
+              onToggle={handleToggle}
+            />
+          </div>
+        )}
         {/* Repositories 仓库栏：占宽约 22%，最小 260px，最大 520px */}
         {!repoPanelCollapsed && (
           <div className="w-[22%] min-w-[260px] max-w-[520px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
@@ -332,20 +398,45 @@ export function AdaptiveLayout({
         </div>
       </div>
 
-      {/* 中等屏幕布局（500–899px）：双栏比例自适应布局 */}
+      {/* 中等屏幕布局（500–899px）：双栏“列表 / 详情”导航。
+          修复：不再把左列写死成 `currentView !== repos => sessionPanel`，
+          选仓库后再点仓库栏按钮可切回 repos 列表，复制会话列表的 bug 不再出现。
+          中屏左列规则：
+          - repos 视图：仓库列表
+          - sessions 视图：会话列表
+          - entries 视图：会话列表（主列为条目/详情，保持上下文） */}
       <div className="hidden min-[500px]:flex min-[900px]:hidden flex-1 min-h-0 z-10 relative">
-        {/* 左侧栏：占宽约 30%，最小 200px，最大 360px */}
-        <div className="w-[30%] min-w-[200px] max-w-[360px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
-          {!repoPanelCollapsed && currentView === "repos" ? repoPanel : sessionPanel}
+        <div className="w-[40%] min-w-[220px] max-w-[420px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm relative">
+          {/* 中屏左列上沿也放仓库栏切换按钮（VS Code 模式下尤其重要，因为没有顶栏） */}
+          {isVscode && (
+            <div className="absolute top-2 left-2 z-20">
+              <RepoBarToggleButton
+                collapsed={repoPanelCollapsed}
+                onToggle={handleToggle}
+              />
+            </div>
+          )}
+          {currentView === "repos" ? repoPanel : sessionPanel}
         </div>
         {/* 右侧主视口栏：填充剩余宽度 */}
         <div className="flex-1 min-w-0 bg-surface-1/20">
-          {currentView === "entries" ? entryPanel : sessionPanel}
+          {currentView === "entries" ? entryPanel : (
+            currentView === "repos" ? entryPanel : sessionPanel
+          )}
         </div>
       </div>
 
       {/* Narrow layout: Single column (<500px / sidebar) */}
       <div className="flex min-[500px]:hidden flex-col flex-1 min-h-0 z-10 relative">
+        {/* VS Code 模式下：窄屏单列也提供按钮，保证不会失去恢复入口 */}
+        {isVscode && (
+          <div className="flex items-center justify-start px-2 py-2 border-b border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
+            <RepoBarToggleButton
+              collapsed={repoPanelCollapsed}
+              onToggle={handleToggle}
+            />
+          </div>
+        )}
         {breadcrumbItems && breadcrumbItems.length > 1 && (
           <Breadcrumb items={breadcrumbItems} />
         )}

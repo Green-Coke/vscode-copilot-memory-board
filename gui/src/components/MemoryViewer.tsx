@@ -245,10 +245,10 @@ export function MemoryViewer({
           <div className="relative flex items-center w-full sm:w-[200px]">
             <input
               type="text"
-              placeholder="Filter files..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium placeholder-text-muted/60"
+              className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
+              aria-label="过滤文件"
             />
             {searchQuery ? (
               <button

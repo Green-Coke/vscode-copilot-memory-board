@@ -129,10 +129,10 @@ export function RepoList({
         <div className="relative flex items-center w-full">
           <input
             type="text"
-            placeholder="Search repositories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium placeholder-text-muted/60"
+            className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
+            aria-label="搜索仓库"
           />
           {/* 存在搜索词时清空按钮自动向左避让，放大镜固定在最右侧，避免二者重叠 */}
           {searchQuery ? (

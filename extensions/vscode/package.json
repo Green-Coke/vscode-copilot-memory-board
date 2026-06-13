@@ -40,7 +40,8 @@
         {
           "id": "memoryBoard.mainView",
           "name": "Memory Board",
-          "type": "webview"
+          "type": "webview",
+          "when": "memoryBoard.movedToPanel == false"
         }
       ]
     },
@@ -52,6 +53,12 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "memoryBoard.moveToEditor",
+        "title": "Memory Board: Move to Editor Area",
+        "category": "Memory Board",
+        "icon": "$(link-external)"
+      },
+      {
         "command": "memoryBoard.openInPanel",
         "title": "Memory Board: Open in Panel",
         "category": "Memory Board",
@@ -61,8 +68,8 @@
     "menus": {
       "view/title": [
         {
-          "command": "memoryBoard.openInPanel",
-          "when": "view == memoryBoard.mainView",
+          "command": "memoryBoard.moveToEditor",
+          "when": "view == memoryBoard.mainView && memoryBoard.movedToPanel == false",
           "group": "navigation"
         },
         {
