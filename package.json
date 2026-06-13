@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "clean": "pnpm -r run clean",
+    "package:vsix": "node -e \"require('fs').mkdirSync('.tmp/publish/vscode',{recursive:true})\" && pnpm --filter @memory-board/core build && pnpm --filter @memory-board/gui build && pnpm --filter vscode-copilot-memory-board run build:webview && pnpm --filter vscode-copilot-memory-board run package",
     "prepare": "echo 'Ready'"
   },
   "devDependencies": {

@@ -27,10 +27,6 @@ importers:
   extensions/desktop: {}
 
   extensions/vscode:
-    dependencies:
-      '@memory-board/core':
-        specifier: workspace:*
-        version: link:../../core
     devDependencies:
       '@types/node':
         specifier: ^25.9.3
@@ -38,6 +34,9 @@ importers:
       '@types/vscode':
         specifier: ^1.96.0
         version: 1.120.0
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

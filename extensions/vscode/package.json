@@ -46,19 +46,18 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run build",
-    "build": "tsc -p ./tsconfig.json",
-    "dev": "tsc -p ./tsconfig.json --watch",
+    "vscode:prepublish": "pnpm run build",
+    "build": "node esbuild.config.mjs",
+    "build:webview": "node -e \"const fs=require('fs'),p=require('path');const src=p.resolve('../../gui/dist');const dst=p.resolve('./resources/webview');fs.cpSync(src,dst,{recursive:true})\"",
+    "package": "npx @vscode/vsce package -o ../../.tmp/publish/vscode/memory-board.vsix",
     "typecheck": "tsc --noEmit",
-    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true})\"",
-    "package": "npx @vscode/vsce package --no-dependencies"
+    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('resources/webview',{recursive:true,force:true})\""
   },
-  "dependencies": {
-    "@memory-board/core": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^25.9.3",
     "@types/vscode": "^1.96.0",
+    "esbuild": "^0.25.0",
     "typescript": "^5.8.3"
   }
 }

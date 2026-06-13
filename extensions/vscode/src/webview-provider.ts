@@ -69,9 +69,9 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [
-        // Allow loading GUI build artifacts
-        vscode.Uri.joinPath(this.extensionUri, "..", "..", "gui", "dist"),
-        // Allow loading extension resources
+        // 允许加载打包在扩展内的 GUI 静态资源
+        vscode.Uri.joinPath(this.extensionUri, "resources", "webview"),
+        // 允许加载扩展自身资源
         vscode.Uri.joinPath(this.extensionUri, "resources"),
       ],
     };
@@ -314,13 +314,11 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
   // ---------------------------------------------------------------------------
 
   private getHtmlForWebview(webview: vscode.Webview): string {
-    // Resolve the GUI dist directory
+    // 解析打包在扩展内的 GUI 静态资源目录
     const guiDistPath = vscode.Uri.joinPath(
       this.extensionUri,
-      "..",
-      "..",
-      "gui",
-      "dist"
+      "resources",
+      "webview"
     );
 
     // Get URIs for the built JS and CSS assets
