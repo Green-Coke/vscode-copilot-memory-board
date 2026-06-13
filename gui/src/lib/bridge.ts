@@ -10,8 +10,14 @@ import type {
   AnyRequest,
   AnyPushMessage,
   ResponseMessage,
+  UiPreferences,
+  WorkspaceState,
 } from "@memory-board/core";
-import { generateRequestId } from "@memory-board/core";
+import {
+  generateRequestId,
+  DEFAULT_UI_PREFERENCES,
+  DEFAULT_WORKSPACE_STATE,
+} from "@memory-board/core";
 
 // ---------------------------------------------------------------------------
 // Environment Detection
@@ -97,6 +103,106 @@ function handleIncomingMessage(event: MessageEvent): void {
 }
 
 // ---------------------------------------------------------------------------
+// Standalone 模式下 UI 偏好与工作区状态的 localStorage 持久化
+// ---------------------------------------------------------------------------
+
+/**
+ * 全局 UI 偏好的 localStorage key
+ * 预览总开关属于跨工作区偏好，所以放在全局 key 下
+ */
+const UI_PREFERENCES_STORAGE_KEY = "memory-board:ui-preferences";
+
+/**
+ * 工作区状态的 localStorage key
+ * standalone 没有真实 workspace 概念，这里统一存当前应用实例
+ * 后续若引入 workspace/repo 维度隔离，可在 key 中追加后缀
+ */
+const WORKSPACE_STATE_STORAGE_KEY = "memory-board:workspace-state";
+
+/**
+ * 深合并部分字段到目标对象，用于 Partial<WorkspaceState> 合并
+ * 仅处理一层字段，嵌套对象（如 SortOption）整体覆盖即可
+ */
+function mergePartialWorkspaceState(
+  base: WorkspaceState,
+  patch: Partial<WorkspaceState>
+): WorkspaceState {
+  return {
+    ...base,
+    ...patch,
+    repoSort: patch.repoSort ?? base.repoSort,
+    sessionSort: patch.sessionSort ?? base.sessionSort,
+    fileTreeSort: patch.fileTreeSort ?? base.fileTreeSort,
+  };
+}
+
+/**
+ * 读取全局 UI 偏好；缺失或损坏时返回默认值
+ */
+function readUiPreferences(): UiPreferences {
+  try {
+    const raw = localStorage.getItem(UI_PREFERENCES_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_UI_PREFERENCES };
+    const parsed = JSON.parse(raw) as Partial<UiPreferences>;
+    return { ...DEFAULT_UI_PREFERENCES, ...parsed };
+  } catch (err) {
+    console.warn("[Bridge] 读取 UI 偏好失败，回退默认值:", err);
+    return { ...DEFAULT_UI_PREFERENCES };
+  }
+}
+
+/**
+ * 写入全局 UI 偏好
+ */
+function writeUiPreferences(preferences: UiPreferences): void {
+  try {
+    localStorage.setItem(UI_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
+  } catch (err) {
+    console.warn("[Bridge] 写入 UI 偏好失败:", err);
+  }
+}
+
+/**
+ * 读取工作区状态；缺失或损坏时返回默认值
+ */
+function readWorkspaceState(): WorkspaceState {
+  try {
+    const raw = localStorage.getItem(WORKSPACE_STATE_STORAGE_KEY);
+    if (!raw) return cloneDefaultWorkspaceState();
+    const parsed = JSON.parse(raw) as Partial<WorkspaceState>;
+    return mergePartialWorkspaceState(cloneDefaultWorkspaceState(), parsed);
+  } catch (err) {
+    console.warn("[Bridge] 读取工作区状态失败，回退默认值:", err);
+    return cloneDefaultWorkspaceState();
+  }
+}
+
+/**
+ * 写入工作区状态（整体覆盖）
+ */
+function writeWorkspaceState(state: WorkspaceState): void {
+  try {
+    localStorage.setItem(WORKSPACE_STATE_STORAGE_KEY, JSON.stringify(state));
+  } catch (err) {
+    console.warn("[Bridge] 写入工作区状态失败:", err);
+  }
+}
+
+/**
+ * 复制默认工作区状态，避免外部意外修改常量默认值
+ */
+function cloneDefaultWorkspaceState(): WorkspaceState {
+  return {
+    repoSort: { ...DEFAULT_WORKSPACE_STATE.repoSort },
+    sessionSort: { ...DEFAULT_WORKSPACE_STATE.sessionSort },
+    fileTreeSort: { ...DEFAULT_WORKSPACE_STATE.fileTreeSort },
+    previewVisible: DEFAULT_WORKSPACE_STATE.previewVisible,
+    pinnedRepoIds: [...DEFAULT_WORKSPACE_STATE.pinnedRepoIds],
+    pinnedSessionIds: [...DEFAULT_WORKSPACE_STATE.pinnedSessionIds],
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Mock Data for Standalone Mode
 // ---------------------------------------------------------------------------
 
@@ -137,6 +243,45 @@ async function handleMockRequest(
         type: "readMemoryContent",
         requestId: request.requestId,
         payload: { entries },
+        error: null,
+      };
+    }
+    case "getUiPreferences": {
+      return {
+        type: "getUiPreferences",
+        requestId: request.requestId,
+        payload: { preferences: readUiPreferences() },
+        error: null,
+      };
+    }
+    case "setUiPreferences": {
+      // mergePartial 后整体回写，保证新加字段不丢
+      const current = readUiPreferences();
+      const next: UiPreferences = { ...current, ...request.payload.preferences };
+      writeUiPreferences(next);
+      return {
+        type: "setUiPreferences",
+        requestId: request.requestId,
+        payload: { preferences: next },
+        error: null,
+      };
+    }
+    case "getWorkspaceState": {
+      return {
+        type: "getWorkspaceState",
+        requestId: request.requestId,
+        payload: { state: readWorkspaceState() },
+        error: null,
+      };
+    }
+    case "setWorkspaceState": {
+      const current = readWorkspaceState();
+      const next = mergePartialWorkspaceState(current, request.payload.state);
+      writeWorkspaceState(next);
+      return {
+        type: "setWorkspaceState",
+        requestId: request.requestId,
+        payload: { state: next },
         error: null,
       };
     }

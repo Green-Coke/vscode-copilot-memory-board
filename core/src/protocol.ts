@@ -6,7 +6,7 @@
 // Must stay in sync with docs/protocol.md.
 // ============================================================================
 
-import type { MemoryEntry, Repository, Session } from "./types.js";
+import type { MemoryEntry, Repository, Session, UiPreferences, WorkspaceState } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Envelope Types
@@ -69,12 +69,57 @@ export interface ReadMemoryContentRequest {
 }
 
 /**
+ * 读取 UI 偏好请求（全局偏好，如预览总开关）
+ */
+export interface GetUiPreferencesRequest {
+  type: "getUiPreferences";
+  requestId: string;
+  payload: Record<string, never>;
+}
+
+/**
+ * 写入 UI 偏好请求（全局偏好）
+ */
+export interface SetUiPreferencesRequest {
+  type: "setUiPreferences";
+  requestId: string;
+  payload: {
+    preferences: Partial<UiPreferences>;
+  };
+}
+
+/**
+ * 读取工作区状态请求（排序、钉选等)
+ */
+export interface GetWorkspaceStateRequest {
+  type: "getWorkspaceState";
+  requestId: string;
+  payload: Record<string, never>;
+}
+
+/**
+ * 写入工作区状态请求（排序、钉选等）
+ * 写入会整体覆盖对应字段，调用方需先读取再 merge
+ */
+export interface SetWorkspaceStateRequest {
+  type: "setWorkspaceState";
+  requestId: string;
+  payload: {
+    state: Partial<WorkspaceState>;
+  };
+}
+
+/**
  * Union of all possible request message types.
  */
 export type AnyRequest =
   | GetReposRequest
   | GetSessionsByRepoRequest
-  | ReadMemoryContentRequest;
+  | ReadMemoryContentRequest
+  | GetUiPreferencesRequest
+  | SetUiPreferencesRequest
+  | GetWorkspaceStateRequest
+  | SetWorkspaceStateRequest;
 
 // ---------------------------------------------------------------------------
 // Response Payloads (Host → GUI)
@@ -108,12 +153,64 @@ export interface ReadMemoryContentResponse {
 }
 
 /**
+ * 读取 UI 偏好响应
+ */
+export interface GetUiPreferencesResponse {
+  type: "getUiPreferences";
+  requestId: string;
+  payload: {
+    preferences: UiPreferences;
+  };
+  error: string | null;
+}
+
+/**
+ * 写入 UI 偏好响应
+ */
+export interface SetUiPreferencesResponse {
+  type: "setUiPreferences";
+  requestId: string;
+  payload: {
+    preferences: UiPreferences;
+  };
+  error: string | null;
+}
+
+/**
+ * 读取工作区状态响应
+ */
+export interface GetWorkspaceStateResponse {
+  type: "getWorkspaceState";
+  requestId: string;
+  payload: {
+    state: WorkspaceState;
+  };
+  error: string | null;
+}
+
+/**
+ * 写入工作区状态响应
+ */
+export interface SetWorkspaceStateResponse {
+  type: "setWorkspaceState";
+  requestId: string;
+  payload: {
+    state: WorkspaceState;
+  };
+  error: string | null;
+}
+
+/**
  * Union of all possible response message types.
  */
 export type AnyResponse =
   | GetReposResponse
   | GetSessionsByRepoResponse
-  | ReadMemoryContentResponse;
+  | ReadMemoryContentResponse
+  | GetUiPreferencesResponse
+  | SetUiPreferencesResponse
+  | GetWorkspaceStateResponse
+  | SetWorkspaceStateResponse;
 
 // ---------------------------------------------------------------------------
 // Push Messages (Host → GUI, unsolicited)
@@ -144,6 +241,10 @@ export const MessageTypes = {
   GET_REPOS: "getRepos",
   GET_SESSIONS_BY_REPO: "getSessionsByRepo",
   READ_MEMORY_CONTENT: "readMemoryContent",
+  GET_UI_PREFERENCES: "getUiPreferences",
+  SET_UI_PREFERENCES: "setUiPreferences",
+  GET_WORKSPACE_STATE: "getWorkspaceState",
+  SET_WORKSPACE_STATE: "setWorkspaceState",
   ON_REPOS_CHANGED: "onReposChanged",
 } as const;
 

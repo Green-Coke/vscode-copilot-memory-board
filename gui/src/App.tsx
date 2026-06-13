@@ -8,7 +8,13 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Repository, Session } from "@memory-board/core";
 import { initBridge } from "@/lib/bridge";
-import { useRepos, useSessions, useMemoryContent } from "@/hooks/use-bridge";
+import {
+  useRepos,
+  useSessions,
+  useMemoryContent,
+  useUiPreferences,
+  useWorkspaceState,
+} from "@/hooks/use-bridge";
 import { AdaptiveLayout, Panel, type ViewMode } from "@/components/Layout";
 import { RepoList } from "@/components/RepoList";
 import { SessionList } from "@/components/SessionList";
@@ -32,6 +38,15 @@ export function App() {
   const [repoPanelCollapsed, setRepoPanelCollapsed] = useState(false);
   // 标记右侧当前是否展示 "仓库级目录" 视图；选中某个 session 时会被清空
   const [viewingRepoFiles, setViewingRepoFiles] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // UI 偏好与工作区状态（来自持久层）
+  // - uiPreferences.enableFilePreview：全局偏好，控制文件预览能力总开关
+  // - workspaceState：按工作区维度保存排序、预览面板展开状态与钉选集合
+  // ---------------------------------------------------------------------------
+  const { preferences, update: updateUiPreferences } = useUiPreferences();
+  const { state: workspaceState, update: updateWorkspaceState } =
+    useWorkspaceState();
 
   // ---------------------------------------------------------------------------
   // Data Fetching
@@ -144,6 +159,14 @@ export function App() {
             selectedId={selectedRepo?.id ?? null}
             onSelect={handleSelectRepo}
             loading={reposLoading}
+            sortOption={workspaceState.repoSort}
+            onSortChange={(next) =>
+              updateWorkspaceState({ repoSort: next })
+            }
+            pinnedIds={workspaceState.pinnedRepoIds}
+            onPinnedChange={(next) =>
+              updateWorkspaceState({ pinnedRepoIds: next })
+            }
           />
         </Panel>
       }
@@ -160,6 +183,14 @@ export function App() {
             repoName={selectedRepo?.name}
             viewingRepoFiles={viewingRepoFiles}
             onSelectRepoFiles={handleViewRepoFiles}
+            sortOption={workspaceState.sessionSort}
+            onSortChange={(next) =>
+              updateWorkspaceState({ sessionSort: next })
+            }
+            pinnedIds={workspaceState.pinnedSessionIds}
+            onPinnedChange={(next) =>
+              updateWorkspaceState({ pinnedSessionIds: next })
+            }
           />
         </Panel>
       }
@@ -181,6 +212,18 @@ export function App() {
             repoId={viewingRepoFiles ? selectedRepo?.id : undefined}
             repoName={viewingRepoFiles ? selectedRepo?.name : undefined}
             viewMode={viewingRepoFiles ? "repo" : "session"}
+            previewEnabled={preferences.enableFilePreview}
+            onPreviewEnabledChange={(next) =>
+              updateUiPreferences({ enableFilePreview: next })
+            }
+            previewVisible={workspaceState.previewVisible}
+            onPreviewVisibleChange={(next) =>
+              updateWorkspaceState({ previewVisible: next })
+            }
+            fileTreeSort={workspaceState.fileTreeSort}
+            onFileTreeSortChange={(next) =>
+              updateWorkspaceState({ fileTreeSort: next })
+            }
           />
         </Panel>
       }

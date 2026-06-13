@@ -10,6 +10,18 @@ export type {
   Session,
   MemoryEntry,
   MemoryCategory,
+  SortBy,
+  SortDirection,
+  PinnedItemType,
+  SortOption,
+  UiPreferences,
+  WorkspaceState,
+} from "./types.js";
+
+export {
+  DEFAULT_UI_PREFERENCES,
+  DEFAULT_LIST_SORT,
+  DEFAULT_WORKSPACE_STATE,
 } from "./types.js";
 
 // Protocol Types
@@ -23,6 +35,14 @@ export type {
   GetSessionsByRepoResponse,
   ReadMemoryContentRequest,
   ReadMemoryContentResponse,
+  GetUiPreferencesRequest,
+  GetUiPreferencesResponse,
+  SetUiPreferencesRequest,
+  SetUiPreferencesResponse,
+  GetWorkspaceStateRequest,
+  GetWorkspaceStateResponse,
+  SetWorkspaceStateRequest,
+  SetWorkspaceStateResponse,
   ReposChangedPush,
   AnyRequest,
   AnyResponse,

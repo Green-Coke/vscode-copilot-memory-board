@@ -15,11 +15,15 @@
     "dev:gui": "pnpm --filter @memory-board/gui dev",
     "dev:core": "pnpm --filter @memory-board/core dev",
     "typecheck": "pnpm -r run typecheck",
+    "typecheck:e2e": "tsc -p tsconfig.e2e.json --noEmit",
     "lint": "pnpm -r run lint",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "clean": "pnpm -r run clean",
     "prepare": "echo 'Ready'"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.0",
     "@types/node": "^25.9.3",
     "typescript": "^5.8.3"
   }

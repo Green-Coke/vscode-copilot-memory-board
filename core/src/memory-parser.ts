@@ -41,6 +41,8 @@ export class MemoryParser {
   async scanRepositories(): Promise<Repository[]> {
     // --- MOCK IMPLEMENTATION ---
     // TODO: Replace with real fs.readdir + stat scanning
+    // Note: createdAt 在真实实现中应由 fs.stat 读取记忆目录 birthtime，
+    // 这里 mock 数据需要与真实 Repository 接口字段对齐。
     return [
       {
         id: "repo-react-dashboard",
@@ -48,6 +50,7 @@ export class MemoryParser {
         path: `${this.basePath}/react-dashboard`,
         sessionCount: 3,
         lastModified: "2025-11-28T14:30:00Z",
+        createdAt: "2025-10-15T09:00:00Z",
       },
       {
         id: "repo-api-gateway",
@@ -55,6 +58,7 @@ export class MemoryParser {
         path: `${this.basePath}/api-gateway`,
         sessionCount: 5,
         lastModified: "2025-12-01T09:15:00Z",
+        createdAt: "2025-09-02T11:30:00Z",
       },
       {
         id: "repo-mobile-app",
@@ -62,6 +66,7 @@ export class MemoryParser {
         path: `${this.basePath}/mobile-app`,
         sessionCount: 2,
         lastModified: "2025-11-25T16:45:00Z",
+        createdAt: "2025-11-01T07:45:00Z",
       },
     ];
   }

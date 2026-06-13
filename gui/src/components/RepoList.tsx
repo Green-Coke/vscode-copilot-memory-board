@@ -2,16 +2,27 @@
 // RepoList — Repository List Panel with Search
 // ============================================================================
 
-import { useState } from "react";
-import type { Repository } from "@memory-board/core";
+import { useState, useMemo } from "react";
+import type { Repository, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { FolderGit2, Clock, ChevronRight, Search, X } from "lucide-react";
+import { PinnedButton } from "@/components/PinnedButton";
+import { SortControl } from "@/components/SortControl";
+import { sortItems } from "@/lib/sort-utils";
 
 interface RepoListProps {
   repos: Repository[];
   selectedId: string | null;
   onSelect: (repo: Repository) => void;
   loading?: boolean;
+  /** 仓库列表排序选项（受控） */
+  sortOption: SortOption;
+  /** 排序变化回调（受控） */
+  onSortChange: (next: SortOption) => void;
+  /** 已钉选的仓库 ID 列表（受控） */
+  pinnedIds: string[];
+  /** 钉选集合变化回调（受控） */
+  onPinnedChange: (next: string[]) => void;
 }
 
 export function RepoList({
@@ -19,20 +30,35 @@ export function RepoList({
   selectedId,
   onSelect,
   loading,
+  sortOption,
+  onSortChange,
+  pinnedIds,
+  onPinnedChange,
 }: RepoListProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   // ---------------------------------------------------------------------------
-  // Search Filtering
+  // 搜索过滤 + 排序 + 钉选分组
+  // 钉选项始终排在最上方；钉选组与非钉选组各自按当前 sortOption 排序
   // ---------------------------------------------------------------------------
-  const filteredRepos = repos.filter((repo) =>
-    repo.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const { pinned, unpinned } = useMemo(() => {
+    const filtered = repos.filter((repo) =>
+      repo.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    const sortedAll = sortItems(filtered, sortOption);
+    return {
+      pinned: sortedAll.filter((r) => pinnedIds.includes(r.id)),
+      unpinned: sortedAll.filter((r) => !pinnedIds.includes(r.id)),
+    };
+  }, [repos, searchQuery, sortOption, pinnedIds]);
 
-  // Identify the most recently modified repository to mark with an active pulse dot
-  const newestRepoId = repos.length > 0
-    ? [...repos].sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())[0]?.id ?? null
-    : null;
+  /** 切换某仓库的钉选状态 */
+  const togglePin = (repoId: string) => {
+    const next = pinnedIds.includes(repoId)
+      ? pinnedIds.filter((id) => id !== repoId)
+      : [...pinnedIds, repoId];
+    onPinnedChange(next);
+  };
 
   // ---------------------------------------------------------------------------
   // Render Loading States (Futuristic Skeletons)
@@ -86,6 +112,18 @@ export function RepoList({
 
   return (
     <div className="flex flex-col h-full">
+      {/* 排序控件 */}
+      <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-border-subtle bg-surface-1/10">
+        <span className="text-[10px] font-bold tracking-widest text-text-muted font-display uppercase">
+          Sort
+        </span>
+        <SortControl
+          value={sortOption}
+          onChange={onSortChange}
+          testIdScope="repo"
+        />
+      </div>
+
       {/* Search Input Box */}
       <div className="p-3 border-b border-border-default bg-surface-1/20 z-10 relative">
         <div className="relative flex items-center w-full">
@@ -111,92 +149,132 @@ export function RepoList({
 
       {/* Repo Item List Container */}
       <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
-        {filteredRepos.length === 0 ? (
+        {pinned.length === 0 && unpinned.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center font-mono text-[11px] text-text-muted">
             No matching repos found
           </div>
         ) : (
-          filteredRepos.map((repo, index) => {
-            const isSelected = selectedId === repo.id;
-            const isNewest = repo.id === newestRepoId;
-
-            return (
-              <button
-                key={repo.id}
-                onClick={() => onSelect(repo)}
-                title={repo.path}
-                className={cn(
-                  "group relative flex items-center gap-3 px-3 py-3 rounded-lg text-left select-none outline-none cursor-pointer",
-                  "transition-all duration-300 ease-out",
-                  "animate-fade-in",
-                  isSelected
-                    ? "bg-selected-bg border border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
-                    : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
-                )}
-                style={{ animationDelay: `${index * 40}ms` }}
-              >
-                {/* Visual Glow line on left border for selected item */}
-                {isSelected && (
-                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
-                )}
-
-                {/* Left Folder icon container with status */}
-                <div
-                  className={cn(
-                    "relative flex items-center justify-center w-8.5 h-8.5 rounded-lg border",
-                    "transition-all duration-300",
-                    isSelected
-                      ? "bg-selected-bg-strong border-selected-border text-selected-text"
-                      : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
-                  )}
-                >
-                  <FolderGit2 className="w-4 h-4" />
-                  
-                  {/* Glowing active marker dot */}
-                  {isNewest && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                  )}
-                </div>
-
-                {/* Central repository details */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold font-display truncate tracking-wide">
-                    {repo.name}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1 font-mono text-[9px] text-text-secondary">
-                    <span className="flex items-center gap-1 font-semibold text-brand-indigo/80">
-                      {repo.sessionCount} sessions
-                    </span>
-                    <span className="text-text-muted">•</span>
-                    <span className="flex items-center gap-0.5 text-text-muted">
-                      <Clock className="w-2.5 h-2.5" />
-                      {formatRelativeTime(repo.lastModified)}
-                    </span>
-                  </div>
-                  {/* Truncated workspace folder path display */}
-                  <span className="block text-[8px] font-mono text-text-muted/65 truncate mt-0.5">
-                    {repo.path}
+          <>
+            {/* 钉选分组 */}
+            {pinned.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 px-1 pt-1">
+                  <div className="h-px flex-1 bg-amber-500/30" />
+                  <span className="text-[9px] font-bold tracking-widest text-amber-500/80 font-display uppercase">
+                    Pinned
                   </span>
+                  <div className="h-px flex-1 bg-amber-500/30" />
                 </div>
-
-                {/* Chevron marker indicator */}
-                <ChevronRight
-                  className={cn(
-                    "w-3.5 h-3.5 text-text-muted transition-all duration-300",
-                    "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
-                    isSelected && "opacity-100 translate-x-0 text-selected-text"
-                  )}
-                />
-              </button>
-            );
-          })
+                {pinned.map((repo, index) =>
+                  renderRepo(repo, index, true)
+                )}
+                {unpinned.length > 0 && (
+                  <div className="flex items-center gap-2 px-1 mt-2">
+                    <div className="h-px flex-1 bg-border-subtle" />
+                    <span className="text-[9px] font-bold tracking-widest text-text-muted font-display uppercase">
+                      Repositories
+                    </span>
+                    <div className="h-px flex-1 bg-border-subtle" />
+                  </div>
+                )}
+              </>
+            )}
+            {/* 非钉选分组 */}
+            {unpinned.map((repo, index) =>
+              renderRepo(repo, index, false)
+            )}
+          </>
         )}
       </div>
     </div>
   );
+
+  /**
+   * 渲染单个仓库条目
+   */
+  function renderRepo(repo: Repository, index: number, isPinned: boolean) {
+    const isSelected = selectedId === repo.id;
+    const repoPinned = pinnedIds.includes(repo.id);
+
+    return (
+      <div
+        key={repo.id}
+        data-testid={`repo-item-${repo.id}`}
+        className={cn(
+          "group relative flex items-center gap-2 px-3 py-3 rounded-lg text-left select-none outline-none cursor-pointer",
+          "transition-all duration-300 ease-out",
+          "animate-fade-in",
+          isSelected
+            ? "bg-selected-bg border border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
+            : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
+        )}
+        style={{ animationDelay: `${index * 40}ms` }}
+        onClick={() => onSelect(repo)}
+        title={repo.path}
+      >
+        {/* Visual Glow line on left border for selected item */}
+        {isSelected && (
+          <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
+        )}
+
+        {/* 钉选指示条，仅钉选项显示 */}
+        {isPinned && (
+          <span className="absolute left-0 top-1 bottom-1 w-[2px] rounded bg-amber-500/70" />
+        )}
+
+        {/* Left Folder icon container with status */}
+        <div
+          className={cn(
+            "relative flex items-center justify-center w-8.5 h-8.5 rounded-lg border",
+            "transition-all duration-300",
+            isSelected
+              ? "bg-selected-bg-strong border-selected-border text-selected-text"
+              : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
+          )}
+        >
+          <FolderGit2 className="w-4 h-4" />
+        </div>
+
+        {/* Central repository details */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold font-display truncate tracking-wide">
+            {repo.name}
+          </p>
+          <div className="flex items-center gap-2 mt-1 font-mono text-[9px] text-text-secondary">
+            <span className="flex items-center gap-1 font-semibold text-brand-indigo/80">
+              {repo.sessionCount} sessions
+            </span>
+            <span className="text-text-muted">•</span>
+            <span className="flex items-center gap-0.5 text-text-muted">
+              <Clock className="w-2.5 h-2.5" />
+              {formatRelativeTime(repo.lastModified)}
+            </span>
+          </div>
+          {/* Truncated workspace folder path display */}
+          <span className="block text-[8px] font-mono text-text-muted/65 truncate mt-0.5">
+            {repo.path}
+          </span>
+        </div>
+
+        {/* 钉选按钮 */}
+        <PinnedButton
+          pinned={repoPinned}
+          onClick={() => togglePin(repo.id)}
+          testIdScope="repo"
+          itemId={repo.id}
+        />
+
+        {/* Chevron marker indicator */}
+        <ChevronRight
+          className={cn(
+            "w-3.5 h-3.5 text-text-muted transition-all duration-300",
+            "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
+            isSelected && "opacity-100 translate-x-0 text-selected-text"
+          )}
+        />
+      </div>
+    );
+  }
 }
 
 function formatRelativeTime(isoString: string): string {

@@ -1,5 +1,5 @@
 import React from "react";
-import { FileText, FileImage, ShieldAlert, FileCode2 } from "lucide-react";
+import { FileText, FileImage, ShieldAlert, FileCode2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MockFsNode } from "@/lib/mock-filetree";
 
@@ -9,16 +9,50 @@ import type { MockFsNode } from "@/lib/mock-filetree";
 interface FilePreviewProps {
   /** 当前选中的文件节点，为 null 时展示占位提示 */
   node: MockFsNode | null;
+  /** 是否处于禁用状态（预览总开关关闭）；为 true 时展示对应的禁用占位 */
+  disabled?: boolean;
+  /** 关闭当前预览面板的回调；缺省时不显示关闭按钮 */
+  onClose?: () => void;
 }
 
 /**
  * 文件预览展示组件，根据选中的文件节点类型展示文本、图片或占位提示
  */
-export function FilePreview({ node }: FilePreviewProps) {
-  // 未选择文件时的占位状态
-  if (!node) {
+export function FilePreview({ node, disabled, onClose }: FilePreviewProps) {
+  // 预览总开关关闭时的占位状态
+  if (disabled) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-surface-2/10">
+      <div
+        data-testid="file-preview-disabled"
+        className="flex flex-col items-center justify-center h-full p-8 text-center bg-surface-2/10"
+      >
+        <div className="relative w-16 h-16 mb-4 flex items-center justify-center text-text-muted/40">
+          <svg viewBox="0 0 100 100" className="w-12 h-12" fill="none" stroke="currentColor" strokeWidth="1">
+            <rect x="25" y="20" width="50" height="60" rx="5" />
+            <line x1="35" y1="35" x2="65" y2="35" strokeDasharray="3 3" />
+            <line x1="35" y1="50" x2="65" y2="50" strokeDasharray="3 3" />
+            <line x1="35" y1="65" x2="55" y2="65" strokeDasharray="3 3" />
+          </svg>
+          <FileCode2 className="absolute w-4 h-4 text-text-muted/60" />
+        </div>
+        <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider font-display">
+          预览已关闭
+        </h3>
+        <p className="text-[11px] text-text-muted mt-1 max-w-[220px] leading-relaxed">
+          文件预览功能当前处于关闭状态。可通过面板顶部的开关重新启用。
+        </p>
+      </div>
+    );
+  }
+
+  // 未选择文件（或当前选中目录）时的占位状态
+  const isDirectoryNode = node?.type === "dir";
+  if (!node || isDirectoryNode) {
+    return (
+      <div
+        data-testid="file-preview-empty"
+        className="flex flex-col items-center justify-center h-full p-8 text-center bg-surface-2/10"
+      >
         <div className="relative w-16 h-16 mb-4 flex items-center justify-center text-text-muted/40">
           <svg viewBox="0 0 100 100" className="w-12 h-12" fill="none" stroke="currentColor" strokeWidth="1">
             <rect x="25" y="20" width="50" height="60" rx="5" />
@@ -29,10 +63,12 @@ export function FilePreview({ node }: FilePreviewProps) {
           <FileCode2 className="absolute w-4 h-4 text-brand-indigo animate-pulse" />
         </div>
         <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider font-display">
-          未选中文件
+          {isDirectoryNode ? "已选中目录" : "未选中文件"}
         </h3>
-        <p className="text-[11px] text-text-muted mt-1 max-w-[200px] leading-relaxed">
-          从左侧目录树中选择一个文本或图片文件，即可在此处查看其具体内容。
+        <p className="text-[11px] text-text-muted mt-1 max-w-[220px] leading-relaxed">
+          {isDirectoryNode
+            ? "目录暂无可预览的内容，请选择一个具体的文件查看其内容。"
+            : "从左侧目录树中选择一个文本或图片文件，即可在此处查看其具体内容。"}
         </p>
       </div>
     );
@@ -48,9 +84,21 @@ export function FilePreview({ node }: FilePreviewProps) {
             <FileText className="w-3.5 h-3.5 text-brand-indigo" />
             {node.name}
           </span>
-          <span className="text-[9px] font-mono text-text-muted uppercase">
-            TEXT / CODE
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-[9px] font-mono text-text-muted uppercase">
+              TEXT / CODE
+            </span>
+            {onClose && (
+              <button
+                data-testid="file-preview-close"
+                onClick={onClose}
+                title="关闭预览"
+                className="text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
         
         {/* 代码内容区域 */}
@@ -73,9 +121,21 @@ export function FilePreview({ node }: FilePreviewProps) {
             <FileImage className="w-3.5 h-3.5 text-accent-cyan" />
             {node.name}
           </span>
-          <span className="text-[9px] font-mono text-text-muted uppercase">
-            IMAGE RESOURCE
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-[9px] font-mono text-text-muted uppercase">
+              IMAGE RESOURCE
+            </span>
+            {onClose && (
+              <button
+                data-testid="file-preview-close"
+                onClick={onClose}
+                title="关闭预览"
+                className="text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 图片自适应展示区 */}

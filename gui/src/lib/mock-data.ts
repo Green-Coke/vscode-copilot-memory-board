@@ -18,6 +18,7 @@ export const MOCK_REPOS: Repository[] = [
     path: "/mock/copilot/memory/vscode-copilot-memory-board",
     sessionCount: 2,
     lastModified: "2026-06-13T09:12:00.000Z",
+    createdAt: "2026-05-20T08:00:00.000Z",
   },
   {
     id: "repo-react-dashboard",
@@ -25,6 +26,7 @@ export const MOCK_REPOS: Repository[] = [
     path: "/mock/copilot/memory/react-performance-dashboard",
     sessionCount: 1,
     lastModified: "2026-06-11T14:30:00.000Z",
+    createdAt: "2026-04-18T10:30:00.000Z",
   },
 ];
 

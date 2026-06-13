@@ -222,23 +222,31 @@ export function AppHeader({
         )}
 
         {stats && (
-          <div className="hidden sm:flex items-center gap-3 font-mono text-[10px] text-text-secondary border-r border-border-default pr-4">
-            <span className="flex items-center gap-1">
-              <FolderGit2 className="w-3 h-3 text-text-muted" />
-              {stats.repos} <span className="text-text-muted">repos</span>
+          <div
+            data-testid="header-stats"
+            className="hidden sm:flex items-center gap-4 font-mono text-sm text-text-secondary border-r border-border-default pr-5"
+          >
+            <span className="flex items-center gap-1.5">
+              <FolderGit2 className="w-4 h-4 text-text-muted" />
+              <span className="font-bold text-text-primary">{stats.repos}</span>{" "}
+              <span className="text-text-muted">repos</span>
             </span>
-            <span className="flex items-center gap-1">
-              <MessageSquare className="w-3 h-3 text-text-muted" />
-              {stats.sessions} <span className="text-text-muted">sessions</span>
+            <span className="flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-text-muted" />
+              <span className="font-bold text-text-primary">{stats.sessions}</span>{" "}
+              <span className="text-text-muted">sessions</span>
             </span>
           </div>
         )}
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-2 border border-border-default shrink-0">
-          <span className="relative flex h-2 w-2">
+        <div
+          data-testid="header-connected"
+          className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-surface-2 border border-border-default shrink-0"
+        >
+          <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
-          <span className="text-[9px] font-mono font-bold tracking-wider text-emerald-400 uppercase">
+          <span className="text-[11px] font-mono font-bold tracking-wider text-emerald-400 uppercase">
             Connected
           </span>
         </div>

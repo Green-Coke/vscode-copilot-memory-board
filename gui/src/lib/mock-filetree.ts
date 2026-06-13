@@ -14,6 +14,16 @@ export interface MockFsNode {
   content?: string;
   /** 文件图片链接或 Base64 资源（仅图片文件有此属性） */
   src?: string;
+  /**
+   * 节点创建时间（ISO 8601），用于按创建时间排序
+   * 真实扩展场景需通过读取文件系统 stat 信息获取，mock 模式下由本文件直接给出
+   */
+  createdAt?: string;
+  /**
+   * 节点更新时间（ISO 8601），用于按更新时间排序
+   * 真实扩展场景需通过读取文件系统 stat 信息获取，mock 模式下由本文件直接给出
+   */
+  updatedAt?: string;
 }
 
 /**
@@ -24,11 +34,15 @@ export interface MockFsNode {
 export function getMockFileTree(sessionId: string): MockFsNode[] {
   // 生成与 sessionId 有关的一些特定字符，以展示个性化 mock 数据
   const suffix = sessionId.substring(0, 6);
+  // 文件/目录时间元数据基线，用于演示按时间排序能力
+  const baseDate = "2026-06-01T00:00:00.000Z";
 
   return [
     {
       name: "src",
       type: "dir",
+      createdAt: "2026-05-20T09:00:00.000Z",
+      updatedAt: "2026-06-12T16:00:00.000Z",
       children: [
         {
           name: "components",
@@ -171,6 +185,8 @@ body {
     {
       name: "public",
       type: "dir",
+      createdAt: "2026-05-22T11:00:00.000Z",
+      updatedAt: "2026-06-09T10:00:00.000Z",
       children: [
         {
           name: "copilot-preview.jpg",
@@ -209,6 +225,8 @@ body {
       name: "README.md",
       type: "file",
       fileType: "text",
+      createdAt: "2026-05-25T08:30:00.000Z",
+      updatedAt: "2026-06-13T09:12:00.000Z",
       content: `# VS Code Copilot Memory Board (${suffix})
 
 欢迎来到 GitHub Copilot 内存看板！
@@ -233,6 +251,8 @@ body {
       name: "package.json",
       type: "file",
       fileType: "text",
+      createdAt: "2026-05-20T09:05:00.000Z",
+      updatedAt: "2026-06-10T14:00:00.000Z",
       content: `{
   "name": "@memory-board/mock-project-${suffix}",
   "version": "1.0.0",
@@ -248,11 +268,15 @@ body {
       name: "config.bin",
       type: "file",
       fileType: "unknown",
+      createdAt: "2026-05-26T13:00:00.000Z",
+      updatedAt: "2026-06-08T18:30:00.000Z",
     },
     {
       name: "notes.txt",
       type: "file",
       fileType: "text",
+      createdAt: "2026-06-05T09:20:00.000Z",
+      updatedAt: "2026-06-11T15:45:00.000Z",
       content: `笔记 (${suffix})
 ==========================
 
@@ -267,6 +291,8 @@ body {
       name: "manifest.json",
       type: "file",
       fileType: "text",
+      createdAt: "2026-05-28T10:15:00.000Z",
+      updatedAt: "2026-06-12T11:00:00.000Z",
       content: `{
   "id": "${suffix}",
   "name": "copilot-memory-board-demo",
@@ -305,11 +331,15 @@ export function getMockRepoFileTree(repoId: string): MockFsNode[] {
     {
       name: ".vscode",
       type: "dir",
+      createdAt: "2026-05-21T10:00:00.000Z",
+      updatedAt: "2026-06-07T09:30:00.000Z",
       children: [
         {
           name: "settings.json",
           type: "file",
           fileType: "text",
+          createdAt: "2026-05-21T10:05:00.000Z",
+          updatedAt: "2026-06-07T09:30:00.000Z",
           content: `{
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -341,6 +371,8 @@ export function getMockRepoFileTree(repoId: string): MockFsNode[] {
     {
       name: "docs",
       type: "dir",
+      createdAt: "2026-05-23T14:00:00.000Z",
+      updatedAt: "2026-06-10T16:30:00.000Z",
       children: [
         {
           name: "architecture.md",

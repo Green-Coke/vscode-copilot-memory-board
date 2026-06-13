@@ -16,7 +16,7 @@ interface FileTreeNodeProps {
   depth: number;
   /** 当前选中文件的节点 */
   selectedNode: MockFsNode | null;
-  /** 选中文件时的回调函数 */
+  /** 选中文件时的回调函数；同时也会在点击目录时被调用以通知上层清空预览 */
   onSelectFile: (node: MockFsNode) => void;
   /** 节点完整路径（用于唯一标识与展开状态追踪） */
   currentPath: string;
@@ -36,10 +36,11 @@ function FileTreeNode({
   const isDirectory = node.type === "dir";
   const isSelected = selectedNode?.name === node.name && selectedNode?.type === node.type;
 
-  // 文件夹点击事件：切换折叠/展开
+  // 文件夹点击事件：切换折叠/展开，并通知上层当前选中目录，便于关闭右侧预览
   const handleDirClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsExpanded(!isExpanded);
+    onSelectFile(node);
   };
 
   // 文件点击事件：触发选择回调

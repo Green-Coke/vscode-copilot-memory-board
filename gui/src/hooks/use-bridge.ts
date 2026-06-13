@@ -11,6 +11,12 @@ import type {
   Session,
   MemoryEntry,
   AnyPushMessage,
+  UiPreferences,
+  WorkspaceState,
+} from "@memory-board/core";
+import {
+  DEFAULT_UI_PREFERENCES,
+  DEFAULT_WORKSPACE_STATE,
 } from "@memory-board/core";
 import { sendRequest, onPushMessage } from "@/lib/bridge";
 
@@ -110,4 +116,158 @@ export function useMemoryContent(
     if (response.error) throw new Error(response.error);
     return (response.payload as { entries: MemoryEntry[] }).entries;
   }, [sessionId]);
+}
+
+// ---------------------------------------------------------------------------
+// UI Preferences & Workspace State Hooks
+// ---------------------------------------------------------------------------
+
+interface UiPreferencesState {
+  preferences: UiPreferences;
+  loading: boolean;
+  /** 部分更新 UI 偏好（会与现有偏好合并并回写持久层） */
+  update: (patch: Partial<UiPreferences>) => Promise<void>;
+}
+
+/**
+ * 读取并更新跨工作区的全局 UI 偏好（如预览总开关）。
+ * 初始渲染使用 DEFAULT_UI_PREFERENCES，加载完成后替换为持久层返回值。
+ */
+export function useUiPreferences(): UiPreferencesState {
+  const [preferences, setPreferences] = useState<UiPreferences>(
+    DEFAULT_UI_PREFERENCES
+  );
+  const [loading, setLoading] = useState(true);
+
+  // 初始加载：从 bridge 拉取一次
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await sendRequest("getUiPreferences", {});
+        if (!active) return;
+        if (response.error) {
+          console.warn("[useUiPreferences] 读取偏好失败:", response.error);
+          return;
+        }
+        const data = (response.payload as { preferences: UiPreferences })
+          .preferences;
+        setPreferences({ ...DEFAULT_UI_PREFERENCES, ...data });
+      } catch (err) {
+        console.warn("[useUiPreferences] 读取偏好异常:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const update = useCallback(async (patch: Partial<UiPreferences>) => {
+    try {
+      const response = await sendRequest("setUiPreferences", {
+        preferences: patch,
+      });
+      if (response.error) {
+        console.warn("[useUiPreferences] 更新偏好失败:", response.error);
+        return;
+      }
+      const next = (response.payload as { preferences: UiPreferences })
+        .preferences;
+      setPreferences({ ...DEFAULT_UI_PREFERENCES, ...next });
+    } catch (err) {
+      console.warn("[useUiPreferences] 更新偏好异常:", err);
+    }
+  }, []);
+
+  return { preferences, loading, update };
+}
+
+interface WorkspaceStateHook {
+  state: WorkspaceState;
+  loading: boolean;
+  /** 部分更新工作区状态（会与现有状态合并并回写持久层） */
+  update: (patch: Partial<WorkspaceState>) => Promise<void>;
+}
+
+/**
+ * 读取并更新当前工作区的状态（排序、预览面板展开状态、钉选集合）。
+ * 初始渲染使用 DEFAULT_WORKSPACE_STATE，加载完成后替换为持久层返回值。
+ */
+export function useWorkspaceState(): WorkspaceStateHook {
+  const [state, setState] = useState<WorkspaceState>(cloneDefaultWorkspace());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const response = await sendRequest("getWorkspaceState", {});
+        if (!active) return;
+        if (response.error) {
+          console.warn("[useWorkspaceState] 读取状态失败:", response.error);
+          return;
+        }
+        const data = (response.payload as { state: WorkspaceState }).state;
+        setState(mergeWorkspace(cloneDefaultWorkspace(), data));
+      } catch (err) {
+        console.warn("[useWorkspaceState] 读取状态异常:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const update = useCallback(async (patch: Partial<WorkspaceState>) => {
+    try {
+      const response = await sendRequest("setWorkspaceState", {
+        state: patch,
+      });
+      if (response.error) {
+        console.warn("[useWorkspaceState] 更新状态失败:", response.error);
+        return;
+      }
+      const next = (response.payload as { state: WorkspaceState }).state;
+      setState(mergeWorkspace(cloneDefaultWorkspace(), next));
+    } catch (err) {
+      console.warn("[useWorkspaceState] 更新状态异常:", err);
+    }
+  }, []);
+
+  return { state, loading, update };
+}
+
+/**
+ * 复制默认工作区状态，避免组件意外修改常量默认值
+ */
+function cloneDefaultWorkspace(): WorkspaceState {
+  return {
+    repoSort: { ...DEFAULT_WORKSPACE_STATE.repoSort },
+    sessionSort: { ...DEFAULT_WORKSPACE_STATE.sessionSort },
+    fileTreeSort: { ...DEFAULT_WORKSPACE_STATE.fileTreeSort },
+    previewVisible: DEFAULT_WORKSPACE_STATE.previewVisible,
+    pinnedRepoIds: [...DEFAULT_WORKSPACE_STATE.pinnedRepoIds],
+    pinnedSessionIds: [...DEFAULT_WORKSPACE_STATE.pinnedSessionIds],
+  };
+}
+
+/**
+ * 将部分工作区状态安全合并到 base，已提供字段整体覆盖
+ */
+function mergeWorkspace(
+  base: WorkspaceState,
+  patch: Partial<WorkspaceState>
+): WorkspaceState {
+  return {
+    repoSort: patch.repoSort ?? base.repoSort,
+    sessionSort: patch.sessionSort ?? base.sessionSort,
+    fileTreeSort: patch.fileTreeSort ?? base.fileTreeSort,
+    previewVisible: patch.previewVisible ?? base.previewVisible,
+    pinnedRepoIds: patch.pinnedRepoIds ?? base.pinnedRepoIds,
+    pinnedSessionIds: patch.pinnedSessionIds ?? base.pinnedSessionIds,
+  };
 }

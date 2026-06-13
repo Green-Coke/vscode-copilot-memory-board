@@ -9,8 +9,30 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { MemoryParser, MessageTypes } from "@memory-board/core";
-import type { AnyRequest, ResponseMessage } from "@memory-board/core";
+import {
+  MemoryParser,
+  MessageTypes,
+  DEFAULT_UI_PREFERENCES,
+  DEFAULT_WORKSPACE_STATE,
+} from "@memory-board/core";
+import type {
+  AnyRequest,
+  ResponseMessage,
+  UiPreferences,
+  WorkspaceState,
+} from "@memory-board/core";
+
+/**
+ * 全局 UI 偏好在 globalState 中的 key
+ * 属于跨工作区偏好（例如预览总开关），存储在 globalState
+ */
+const GLOBAL_UI_PREFERENCES_KEY = "memory-board.uiPreferences";
+
+/**
+ * 工作区状态在 workspaceState 中的 key
+ * 属于工作区级偏好（排序、钉选、预览面板展开状态），存储在 workspaceState
+ */
+const WORKSPACE_STATE_KEY = "memory-board.workspaceState";
 
 export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "memoryBoard.mainView";
@@ -141,6 +163,56 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
           break;
         }
 
+        case MessageTypes.GET_UI_PREFERENCES: {
+          const prefs = this.readUiPreferences();
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: { preferences: prefs },
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.SET_UI_PREFERENCES: {
+          const { preferences: patch } = message.payload as {
+            preferences: Partial<UiPreferences>;
+          };
+          const next = this.writeUiPreferences(patch);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: { preferences: next },
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.GET_WORKSPACE_STATE: {
+          const state = this.readWorkspaceState();
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: { state },
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.SET_WORKSPACE_STATE: {
+          const { state: patch } = message.payload as {
+            state: Partial<WorkspaceState>;
+          };
+          const next = this.writeWorkspaceState(patch);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: { state: next },
+            error: null,
+          };
+          break;
+        }
+
         default:
           response = {
             type: msgType,
@@ -159,6 +231,82 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
     }
 
     this.view.webview.postMessage(response);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Preference & Workspace State Persistence Helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * 读取全局 UI 偏好；缺失字段用默认值补齐，返回完整的 UiPreferences
+   */
+  private readUiPreferences(): UiPreferences {
+    const stored = this.context.globalState.get<Partial<UiPreferences>>(
+      GLOBAL_UI_PREFERENCES_KEY
+    );
+    return { ...DEFAULT_UI_PREFERENCES, ...(stored ?? {}) };
+  }
+
+  /**
+   * 部分更新全局 UI 偏好（合并后整体回写 globalState），返回最新完整值
+   */
+  private writeUiPreferences(patch: Partial<UiPreferences>): UiPreferences {
+    const next = { ...this.readUiPreferences(), ...patch };
+    void this.context.globalState.update(GLOBAL_UI_PREFERENCES_KEY, next);
+    return next;
+  }
+
+  /**
+   * 读取工作区状态；缺失字段用默认值补齐，返回完整的 WorkspaceState
+   */
+  private readWorkspaceState(): WorkspaceState {
+    const stored = this.context.workspaceState.get<Partial<WorkspaceState>>(
+      WORKSPACE_STATE_KEY
+    );
+    return this.mergeWorkspaceState(
+      this.cloneDefaultWorkspaceState(),
+      stored ?? {}
+    );
+  }
+
+  /**
+   * 部分更新工作区状态（合并后整体回写 workspaceState），返回最新完整值
+   */
+  private writeWorkspaceState(patch: Partial<WorkspaceState>): WorkspaceState {
+    const next = this.mergeWorkspaceState(this.readWorkspaceState(), patch);
+    void this.context.workspaceState.update(WORKSPACE_STATE_KEY, next);
+    return next;
+  }
+
+  /**
+   * 复制默认工作区状态，避免外部意外修改常量默认值
+   */
+  private cloneDefaultWorkspaceState(): WorkspaceState {
+    return {
+      repoSort: { ...DEFAULT_WORKSPACE_STATE.repoSort },
+      sessionSort: { ...DEFAULT_WORKSPACE_STATE.sessionSort },
+      fileTreeSort: { ...DEFAULT_WORKSPACE_STATE.fileTreeSort },
+      previewVisible: DEFAULT_WORKSPACE_STATE.previewVisible,
+      pinnedRepoIds: [...DEFAULT_WORKSPACE_STATE.pinnedRepoIds],
+      pinnedSessionIds: [...DEFAULT_WORKSPACE_STATE.pinnedSessionIds],
+    };
+  }
+
+  /**
+   * 将部分工作区状态安全合并到 base；嵌套对象如 SortOption 整体覆盖
+   */
+  private mergeWorkspaceState(
+    base: WorkspaceState,
+    patch: Partial<WorkspaceState>
+  ): WorkspaceState {
+    return {
+      repoSort: patch.repoSort ?? base.repoSort,
+      sessionSort: patch.sessionSort ?? base.sessionSort,
+      fileTreeSort: patch.fileTreeSort ?? base.fileTreeSort,
+      previewVisible: patch.previewVisible ?? base.previewVisible,
+      pinnedRepoIds: patch.pinnedRepoIds ?? base.pinnedRepoIds,
+      pinnedSessionIds: patch.pinnedSessionIds ?? base.pinnedSessionIds,
+    };
   }
 
   // ---------------------------------------------------------------------------
