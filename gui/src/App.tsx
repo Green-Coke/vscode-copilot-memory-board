@@ -92,6 +92,13 @@ export function App() {
     });
   }
 
+  // Calculate stats to display in the header
+  const stats = {
+    repos: repos?.length ?? 0,
+    sessions: sessions?.length ?? 0,
+    entries: entries?.length ?? 0,
+  };
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -100,10 +107,11 @@ export function App() {
     <AdaptiveLayout
       currentView={currentView}
       breadcrumbItems={breadcrumbItems}
+      stats={stats}
       repoPanel={
         <Panel
           title="Repositories"
-          icon={<FolderGit2 className="w-3.5 h-3.5 text-text-muted" />}
+          icon={<FolderGit2 className="w-3.5 h-3.5 text-text-secondary" />}
         >
           <RepoList
             repos={repos ?? []}
@@ -116,7 +124,7 @@ export function App() {
       sessionPanel={
         <Panel
           title="Sessions"
-          icon={<MessageSquare className="w-3.5 h-3.5 text-text-muted" />}
+          icon={<MessageSquare className="w-3.5 h-3.5 text-text-secondary" />}
         >
           <SessionList
             sessions={sessions ?? []}
@@ -130,7 +138,7 @@ export function App() {
       entryPanel={
         <Panel
           title="Memory Entries"
-          icon={<FileText className="w-3.5 h-3.5 text-text-muted" />}
+          icon={<FileText className="w-3.5 h-3.5 text-text-secondary" />}
         >
           <MemoryViewer
             entries={entries ?? []}

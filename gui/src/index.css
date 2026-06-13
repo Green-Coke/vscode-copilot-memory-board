@@ -1,52 +1,54 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   Memory Board — Design System Tokens
+   Memory Board — Design System Tokens (Tailwind v4)
    ============================================================================ */
 
 @theme {
-  /* Brand Colors — Indigo / Violet gradient palette */
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-300: #a5b4fc;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-  --color-brand-900: #312e81;
+  /* Override Default Fonts */
+  --font-sans: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, Roboto, sans-serif;
+  --font-display: "Outfit", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Fira Code, Consolas, Monaco, monospace;
 
-  /* Surface Colors — Dark Mode First */
-  --color-surface-0: #0a0a0f;
-  --color-surface-1: #12121a;
-  --color-surface-2: #1a1a25;
-  --color-surface-3: #222230;
-  --color-surface-4: #2a2a3a;
+  /* Cyberpunk / Deep Obsidian Theme Colors */
+  --color-surface-0: #030306;
+  --color-surface-1: #09090f;
+  --color-surface-2: #101018;
+  --color-surface-3: #171724;
+  --color-surface-4: #202030;
 
-  /* Text Colors */
-  --color-text-primary: #f0f0f5;
-  --color-text-secondary: #a0a0b5;
-  --color-text-muted: #606075;
+  /* Standard Text Hierarchy */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #52525b;
 
-  /* Border Colors */
-  --color-border-default: #2a2a3a;
-  --color-border-subtle: #1e1e2e;
+  /* Glass Border Tokens */
+  --color-border-default: rgba(255, 255, 255, 0.055);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-border-subtle: rgba(255, 255, 255, 0.03);
 
-  /* Category Badge Colors */
-  --color-category-preference: #f59e0b;
+  /* Cyber Neon Highlighters */
+  --color-accent-cyan: #06b6d4;
+  --color-accent-pink: #f43f5e;
+  --color-brand-indigo: #6366f1;
+  --color-brand-purple: #8b5cf6;
+
+  /* Category Specific Glow Colors */
+  --color-category-preference: #eab308;
   --color-category-context: #3b82f6;
   --color-category-instruction: #ef4444;
   --color-category-knowledge: #10b981;
-  --color-category-pattern: #8b5cf6;
-  --color-category-unknown: #6b7280;
+  --color-category-pattern: #a855f7;
+  --color-category-unknown: #71717a;
+  --color-category-bookmark: #f43f5e;
 
-  /* Animation Timing */
+  /* Animations & Easing */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-sine: cubic-bezier(0.445, 0.05, 0.55, 0.95);
 }
 
 /* ============================================================================
-   Base Styles
+   Base Setup & Scrollbars
    ============================================================================ */
 
 * {
@@ -62,32 +64,26 @@ html {
 }
 
 body {
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--color-surface-0);
   color: var(--color-text-primary);
   overflow: hidden;
   height: 100vh;
   width: 100vw;
+  position: relative;
 }
 
 #root {
   height: 100%;
   width: 100%;
+  position: relative;
+  z-index: 10;
 }
 
-/* ============================================================================
-   Scrollbar Customization
-   ============================================================================ */
-
+/* Webkit Scrollbars — Sleek & Glowing hover */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -96,70 +92,166 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-surface-4);
-  border-radius: 3px;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brand-500);
+  background: color-mix(in srgb, var(--color-brand-indigo) 80%, white);
 }
 
 /* ============================================================================
-   Category Badge Utilities
+   Futuristic Backdrop Mesh Gradients
    ============================================================================ */
 
-.badge-preference {
-  background-color: color-mix(in srgb, var(--color-category-preference) 15%, transparent);
-  color: var(--color-category-preference);
+.cyber-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background-color: var(--color-surface-0);
 }
 
-.badge-context {
-  background-color: color-mix(in srgb, var(--color-category-context) 15%, transparent);
-  color: var(--color-category-context);
+.cyber-bg::before {
+  content: "";
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+  filter: blur(80px);
+  animation: float-slow 20s infinite alternate var(--ease-in-out-sine);
 }
 
-.badge-instruction {
-  background-color: color-mix(in srgb, var(--color-category-instruction) 15%, transparent);
-  color: var(--color-category-instruction);
+.cyber-bg::after {
+  content: "";
+  position: absolute;
+  bottom: -10%;
+  right: -10%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.07) 0%, transparent 70%);
+  filter: blur(80px);
+  animation: float-slow 25s infinite alternate-reverse var(--ease-in-out-sine);
 }
 
-.badge-knowledge {
-  background-color: color-mix(in srgb, var(--color-category-knowledge) 15%, transparent);
-  color: var(--color-category-knowledge);
-}
-
-.badge-pattern {
-  background-color: color-mix(in srgb, var(--color-category-pattern) 15%, transparent);
-  color: var(--color-category-pattern);
-}
-
-.badge-unknown {
-  background-color: color-mix(in srgb, var(--color-category-unknown) 15%, transparent);
-  color: var(--color-category-unknown);
+/* Additional grid overlay for IDE look and feel */
+.cyber-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.85;
 }
 
 /* ============================================================================
-   Glassmorphism Panel
+   Glassmorphism Styles
    ============================================================================ */
 
 .glass-panel {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-surface-2) 80%, transparent),
-    color-mix(in srgb, var(--color-surface-1) 60%, transparent)
-  );
-  backdrop-filter: blur(12px);
+  background: rgba(16, 16, 24, 0.45);
+  backdrop-filter: blur(20px) saturate(140%);
   border: 1px solid var(--color-border-default);
-  border-radius: 12px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s var(--ease-out-expo);
+}
+
+.glass-panel-hover:hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.5),
+    0 0 15px -3px rgba(99, 102, 241, 0.06);
+  transform: translateY(-1px);
+}
+
+/* Input boxes styling */
+.cyber-input {
+  background: rgba(8, 8, 12, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.cyber-input:focus {
+  outline: none;
+  border-color: var(--color-brand-indigo);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  background: rgba(8, 8, 12, 0.8);
 }
 
 /* ============================================================================
-   Animations
+   Category Neon Badges
    ============================================================================ */
+
+.badge-preference {
+  background: rgba(234, 179, 8, 0.07);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  color: var(--color-category-preference);
+}
+.badge-context {
+  background: rgba(59, 130, 246, 0.07);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: var(--color-category-context);
+}
+.badge-instruction {
+  background: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--color-category-instruction);
+}
+.badge-knowledge {
+  background: rgba(16, 185, 129, 0.07);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--color-category-knowledge);
+}
+.badge-pattern {
+  background: rgba(168, 85, 247, 0.07);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  color: var(--color-category-pattern);
+}
+.badge-unknown {
+  background: rgba(113, 113, 122, 0.07);
+  border: 1px solid rgba(113, 113, 122, 0.2);
+  color: var(--color-category-unknown);
+}
+.badge-bookmark {
+  background: rgba(244, 63, 94, 0.07);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  color: var(--color-category-bookmark);
+}
+
+/* ============================================================================
+   Animations & Transitions
+   ============================================================================ */
+
+@keyframes float-slow {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(8%, 8%) scale(1.1);
+  }
+}
 
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -167,10 +259,10 @@ body {
   }
 }
 
-@keyframes slide-in-left {
+@keyframes slide-in {
   from {
     opacity: 0;
-    transform: translateX(-12px);
+    transform: translateX(10px);
   }
   to {
     opacity: 1;
@@ -178,19 +270,53 @@ body {
   }
 }
 
+@keyframes shimmery {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 40%, transparent);
+    opacity: 0.4;
+    filter: drop-shadow(0 0 2px rgba(99, 102, 241, 0.3));
   }
   50% {
-    box-shadow: 0 0 12px 4px color-mix(in srgb, var(--color-brand-500) 20%, transparent);
+    opacity: 0.9;
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.7));
   }
 }
 
+/* Animation utilities */
 .animate-fade-in {
-  animation: fade-in 0.4s var(--ease-out-expo) both;
+  animation: fade-in 0.35s var(--ease-out-expo) both;
 }
 
-.animate-slide-in-left {
-  animation: slide-in-left 0.3s var(--ease-out-expo) both;
+.animate-slide-in {
+  animation: slide-in 0.3s var(--ease-out-expo) both;
 }
+
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--color-surface-3) 25%, var(--color-surface-4) 50%, var(--color-surface-3) 75%);
+  background-size: 200% 100%;
+  animation: shimmery 1.6s infinite linear;
+}
+
+.animate-brain-glow {
+  animation: pulse-glow 3s infinite ease-in-out;
+}
+
+/* Stagger animation utilities for cleaner rendering */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+.stagger-6 { animation-delay: 300ms; }
+.stagger-7 { animation-delay: 350ms; }
+.stagger-8 { animation-delay: 400ms; }
+.stagger-9 { animation-delay: 450ms; }
+.stagger-10 { animation-delay: 500ms; }
