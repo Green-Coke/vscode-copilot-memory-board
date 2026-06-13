@@ -30,6 +30,8 @@ export function App() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [currentView, setCurrentView] = useState<ViewMode>("repos");
   const [repoPanelCollapsed, setRepoPanelCollapsed] = useState(false);
+  // 标记右侧当前是否展示 "仓库级目录" 视图；选中某个 session 时会被清空
+  const [viewingRepoFiles, setViewingRepoFiles] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Data Fetching
@@ -50,18 +52,32 @@ export function App() {
   const handleSelectRepo = useCallback((repo: Repository) => {
     setSelectedRepo(repo);
     setSelectedSession(null);
+    setViewingRepoFiles(false);
     setCurrentView("sessions");
-    setRepoPanelCollapsed(true);
+    // 桌面宽屏下不再自动折叠仓库栏，保持仓库 / 会话 / 条目三栏始终可见；
+    // 仅窄屏经由 currentView 切页，repoPanelCollapsed 仍可由顶部按钮手动控制
   }, []);
 
   const handleSelectSession = useCallback((session: Session) => {
     setSelectedSession(session);
+    // 选中具体会话后退出仓库级目录视图
+    setViewingRepoFiles(false);
     setCurrentView("entries");
+  }, []);
+
+  /**
+   * 切换查看仓库级目录：进入时清空当前 session，右侧展示整个仓库的骨架
+   */
+  const handleViewRepoFiles = useCallback(() => {
+    setSelectedSession(null);
+    setViewingRepoFiles(true);
+    setCurrentView("sessions");
   }, []);
 
   const handleBackToRepos = useCallback(() => {
     setSelectedRepo(null);
     setSelectedSession(null);
+    setViewingRepoFiles(false);
     setCurrentView("repos");
     setRepoPanelCollapsed(false);
   }, []);
@@ -84,7 +100,9 @@ export function App() {
 
   if (selectedRepo) {
     breadcrumbItems.push({
-      label: selectedRepo.name,
+      label: viewingRepoFiles
+        ? `${selectedRepo.name} / 仓库目录`
+        : selectedRepo.name,
       onClick: currentView === "entries" ? handleBackToSessions : undefined,
     });
   }
@@ -140,6 +158,8 @@ export function App() {
             onSelect={handleSelectSession}
             loading={sessionsLoading}
             repoName={selectedRepo?.name}
+            viewingRepoFiles={viewingRepoFiles}
+            onSelectRepoFiles={handleViewRepoFiles}
           />
         </Panel>
       }
@@ -151,7 +171,16 @@ export function App() {
           <MemoryViewer
             entries={entries ?? []}
             loading={entriesLoading}
-            sessionTitle={selectedSession?.title}
+            sessionTitle={
+              viewingRepoFiles
+                ? selectedRepo?.name
+                : selectedSession?.title
+            }
+            sessionId={selectedSession?.id}
+            // 仓库级目录视图信号：传入 repoId 且不传 sessionId 时切换到 repo 级文件树
+            repoId={viewingRepoFiles ? selectedRepo?.id : undefined}
+            repoName={viewingRepoFiles ? selectedRepo?.name : undefined}
+            viewMode={viewingRepoFiles ? "repo" : "session"}
           />
         </Panel>
       }

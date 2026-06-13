@@ -119,7 +119,7 @@ export function AppHeader({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
-    <header className="relative flex items-center justify-between px-4 py-3 border-b border-border-default bg-surface-1/90 backdrop-blur-md z-30">
+    <header className="relative flex items-center justify-between px-5 py-4 border-b border-border-default bg-surface-1/90 backdrop-blur-md z-30">
       {/* Glow highlight */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-indigo/60 to-transparent" />
       
@@ -140,8 +140,8 @@ export function AppHeader({
         )}
 
         {/* Glowing Neural Network SVG Logo */}
-        <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-surface-2 border border-border-default shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)] shrink-0">
-          <svg viewBox="0 0 100 100" className="w-5 h-5 text-brand-indigo animate-brain-glow" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <div className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-surface-2 border border-border-default shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)] shrink-0">
+          <svg viewBox="0 0 100 100" className="w-6 h-6 text-brand-indigo animate-brain-glow" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M50 20 C32 20, 24 35, 24 50 C24 65, 32 80, 50 80 C68 80, 76 65, 76 50 C76 35, 68 20, 50 20 Z" />
             <path d="M50 20 L50 80" />
             <path d="M36 30 C42 36, 42 44, 36 50 C30 56, 30 64, 36 70" />
@@ -160,14 +160,14 @@ export function AppHeader({
           <span className="absolute -inset-0.5 rounded-lg border border-brand-indigo/20 animate-pulse" />
         </div>
         <div>
-          <h1 className="text-sm font-extrabold tracking-tight text-text-primary font-display flex items-center gap-1.5 leading-none">
+          <h1 className="text-base font-extrabold tracking-tight text-text-primary font-display flex items-center gap-1.5 leading-none">
             Memory Board
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-brand-indigo/10 border border-brand-indigo/20 text-brand-indigo leading-none font-semibold">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-brand-indigo/10 border border-brand-indigo/20 text-brand-indigo leading-none font-semibold">
               v1.0.0
             </span>
           </h1>
-          <p className="text-[10px] text-text-secondary font-mono tracking-wide mt-0.5 uppercase flex items-center gap-1">
-            <Terminal className="w-3 h-3 text-accent-cyan inline" />
+          <p className="text-[11px] text-text-secondary font-mono tracking-wide mt-1 uppercase flex items-center gap-1">
+            <Terminal className="w-3.5 h-3.5 text-accent-cyan inline" />
             GitHub Copilot Memory Indexer
           </p>
         </div>
@@ -180,17 +180,17 @@ export function AppHeader({
           <div className="relative font-sans text-xs">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded bg-surface-2 border border-border-default hover:border-brand-indigo transition-colors cursor-pointer text-text-primary font-medium"
+              className="flex items-center gap-2 px-4 py-1.5 rounded bg-surface-2 border border-border-default hover:border-brand-indigo transition-colors cursor-pointer text-text-primary font-medium"
             >
-              <FolderGit2 className="w-3.5 h-3.5 text-brand-indigo" />
-              <span className="max-w-[120px] truncate">{selectedRepo ? selectedRepo.name : "选择仓库..."}</span>
-              <ChevronDown className={cn("w-3 h-3 text-text-muted transition-transform duration-200", isDropdownOpen && "rotate-180")} />
+              <FolderGit2 className="w-4 h-4 text-brand-indigo" />
+              <span className="max-w-[220px] truncate">{selectedRepo ? selectedRepo.name : "选择仓库..."}</span>
+              <ChevronDown className={cn("w-3.5 h-3.5 text-text-muted transition-transform duration-200", isDropdownOpen && "rotate-180")} />
             </button>
             
             {isDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                <div className="absolute right-0 mt-1.5 w-64 max-h-80 overflow-y-auto rounded-lg border border-border-default bg-surface-2 shadow-xl z-50 p-1 flex flex-col gap-1 backdrop-blur-md">
+                <div className="absolute right-0 mt-1.5 w-80 max-h-80 overflow-y-auto rounded-lg border border-border-default bg-surface-2 shadow-xl z-50 p-1 flex flex-col gap-1 backdrop-blur-md">
                   <div className="px-2 py-1.5 text-[10px] font-bold tracking-widest text-text-muted font-display uppercase border-b border-border-subtle mb-1">
                     切换仓库
                   </div>
@@ -206,7 +206,7 @@ export function AppHeader({
                         className={cn(
                           "flex flex-col px-2.5 py-2 rounded text-left cursor-pointer transition-colors w-full",
                           isSelected
-                            ? "bg-brand-indigo/10 text-brand-indigo border border-brand-indigo/20"
+                            ? "bg-selected-bg text-selected-text border border-selected-border"
                             : "hover:bg-surface-3/60 text-text-primary border border-transparent"
                         )}
                       >
@@ -305,16 +305,16 @@ export function AdaptiveLayout({
 
       {/* 宽屏布局（≥900px）：三栏比例自适应布局，带有最小/最大宽度限制 */}
       <div className="hidden min-[900px]:flex flex-1 min-h-0 z-10 relative">
-        {/* Repositories 仓库栏：占宽约 20%，最小 220px，最大 420px */}
+        {/* Repositories 仓库栏：占宽约 22%，最小 260px，最大 520px */}
         {!repoPanelCollapsed && (
-          <div className="w-[20%] min-w-[220px] max-w-[420px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
+          <div className="w-[22%] min-w-[260px] max-w-[520px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
             {repoPanel}
           </div>
         )}
-        {/* Sessions 会话栏：在折叠时加宽占约 30%，最小 240px，最大 480px / 440px */}
+        {/* Sessions 会话栏：在折叠时加宽占约 28%，最小 280px，最大 560px / 520px */}
         <div className={cn(
           "shrink-0 border-r border-border-default/80 bg-surface-1/30 backdrop-blur-sm",
-          repoPanelCollapsed ? "w-[30%] min-w-[260px] max-w-[480px]" : "w-[25%] min-w-[240px] max-w-[440px]"
+          repoPanelCollapsed ? "w-[28%] min-w-[280px] max-w-[560px]" : "w-[26%] min-w-[280px] max-w-[520px]"
         )}>
           {sessionPanel}
         </div>

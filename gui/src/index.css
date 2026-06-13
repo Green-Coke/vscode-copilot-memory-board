@@ -27,10 +27,18 @@
   --ui-border-subtle: rgba(140, 192, 235, 0.12);   /* 暗淡分割边框 */
 
   /* 核心功能强调与品牌配色 */
-  --ui-brand-indigo: #8cc0eb;  /* 婴儿天蓝品牌色 */
+  --ui-brand-indigo: #2563eb;  /* 加深的品牌蓝，提升选中态文字与边框对比度 */
+  --ui-brand-indigo-soft: #8cc0eb;  /* 婴儿天蓝，仅用于装饰性发光与弱投影 */
   --ui-brand-purple: #c084fc;  /* 柔和粉紫色 */
-  --ui-accent-cyan: #38bdf8;    /* 亮天青色 */
+  --ui-accent-cyan: #0284c7;    /* 加深的天青色，保证可读性 */
   --ui-accent-pink: #fb7185;    /* 柔桃粉色 */
+
+  /* 选中态专用 Token：更深的实体背景 + 深色文字，取代原半透明浅蓝 + 浅蓝文字 */
+  --ui-selected-bg: rgba(37, 99, 235, 0.14);  /* 选中项背景：更明显的淡蓝实体 */
+  --ui-selected-bg-strong: rgba(37, 99, 235, 0.22);  /* 选中项图标容器背景 */
+  --ui-selected-border: rgba(37, 99, 235, 0.45);     /* 选中项边框 */
+  --ui-selected-text: #1d4ed8;   /* 选中项文字：深靛蓝，对比度远高于浅天蓝 */
+  --ui-selected-glow: rgba(37, 99, 235, 0.85);      /* 选中条发光颜色 */
 
   /* 各分类标记颜色，浅色模式下选用高对比度且协调的配色 */
   --ui-category-preference: #b45309; /* 深金橙色 */
@@ -68,6 +76,13 @@ body.vscode-high-contrast {
   --ui-brand-purple: var(--vscode-textLink-activeForeground, #a855f7);
   --ui-accent-cyan: var(--vscode-editorMarkerNavigationInfo-background, #14b8a6);
   --ui-accent-pink: var(--vscode-editorMarkerNavigationError-background, #f43f5e);
+
+  /* 选中态映射：复用 VS Code 列表选中色与链接色，深色主题下保持可读对比度 */
+  --ui-selected-bg: var(--vscode-list-inactiveSelectionBackground, rgba(99, 102, 241, 0.18));
+  --ui-selected-bg-strong: var(--vscode-list-activeSelectionBackground, rgba(99, 102, 241, 0.3));
+  --ui-selected-border: var(--vscode-focusBorder, rgba(99, 102, 241, 0.6));
+  --ui-selected-text: var(--vscode-textLink-foreground, var(--vscode-list-activeSelectionForeground, #c7d2fe));
+  --ui-selected-glow: var(--vscode-focusBorder, rgba(99, 102, 241, 0.8));
 }
 
 /* VS Code 浅色主题下的特定颜色微调以满足对比度要求 */
@@ -106,6 +121,7 @@ body.vscode-light {
 
   /* 核心强调色 */
   --color-brand-indigo: var(--ui-brand-indigo);
+  --color-brand-indigo-soft: var(--ui-brand-indigo-soft);
   --color-brand-purple: var(--ui-brand-purple);
   --color-accent-cyan: var(--ui-accent-cyan);
   --color-accent-pink: var(--ui-accent-pink);
@@ -118,6 +134,12 @@ body.vscode-light {
   --color-category-pattern: var(--ui-category-pattern);
   --color-category-unknown: var(--ui-category-unknown);
   --color-category-bookmark: var(--ui-category-bookmark);
+
+  /* 选中态专用色，供列表项高亮使用 */
+  --color-selected-bg: var(--ui-selected-bg);
+  --color-selected-bg-strong: var(--ui-selected-bg-strong);
+  --color-selected-border: var(--ui-selected-border);
+  --color-selected-text: var(--ui-selected-text);
 
   /* 动画曲线与延迟 */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -135,24 +157,25 @@ body.vscode-light {
 }
 
 html {
-  font-size: 13px;
+  font-size: 15px; /* 提升基础字号，让默认信息密度更低、内容更易读 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 桌面端逐级放大，确保大屏下整体比例同步提升 */
 @media (min-width: 1280px) {
   html {
-    font-size: 14px;
+    font-size: 17px;
   }
 }
 @media (min-width: 1600px) {
   html {
-    font-size: 15px;
+    font-size: 19px;
   }
 }
 @media (min-width: 1920px) {
   html {
-    font-size: 17px;
+    font-size: 22px;
   }
 }
 

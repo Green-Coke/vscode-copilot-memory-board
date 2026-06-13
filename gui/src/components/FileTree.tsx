@@ -114,7 +114,7 @@ function FileTreeNode({
           className={cn(
             "w-full flex items-center gap-1.5 py-1 px-2 rounded text-left transition-all cursor-pointer",
             isSelected
-              ? "bg-brand-indigo/15 text-brand-indigo font-bold border border-brand-indigo/25 shadow-[inset_0_1px_5px_rgba(99,102,241,0.05)]"
+              ? "bg-selected-bg text-selected-text font-bold border border-selected-border shadow-[inset_0_1px_5px_var(--ui-selected-glow)]"
               : "hover:bg-surface-3/40 border border-transparent text-text-secondary hover:text-text-primary"
           )}
           style={{ paddingLeft: `${depth * 12 + 20}px` }}

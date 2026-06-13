@@ -89,22 +89,23 @@ export function RepoList({
       {/* Search Input Box */}
       <div className="p-3 border-b border-border-default bg-surface-1/20 z-10 relative">
         <div className="relative flex items-center w-full">
-          <Search className="absolute left-3 w-4 h-4 text-text-muted" />
           <input
             type="text"
             placeholder="Search repositories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="cyber-input w-full pl-10 pr-10 py-1.5 font-sans font-medium placeholder-text-muted/60"
+            className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium placeholder-text-muted/60"
           />
-          {searchQuery && (
+          {/* 存在搜索词时清空按钮自动向左避让，放大镜固定在最右侧，避免二者重叠 */}
+          {searchQuery ? (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
+              className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3.5 h-3.5" />
             </button>
-          )}
+          ) : null}
+          <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
         </div>
       </div>
 
@@ -129,14 +130,14 @@ export function RepoList({
                   "transition-all duration-300 ease-out",
                   "animate-fade-in",
                   isSelected
-                    ? "bg-brand-indigo/10 border border-brand-indigo/25 text-brand-indigo shadow-[inset_0_1px_10px_rgba(99,102,241,0.05)]"
+                    ? "bg-selected-bg border border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
                     : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
                 )}
                 style={{ animationDelay: `${index * 40}ms` }}
               >
                 {/* Visual Glow line on left border for selected item */}
                 {isSelected && (
-                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-brand-indigo shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
+                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
                 )}
 
                 {/* Left Folder icon container with status */}
@@ -145,7 +146,7 @@ export function RepoList({
                     "relative flex items-center justify-center w-8.5 h-8.5 rounded-lg border",
                     "transition-all duration-300",
                     isSelected
-                      ? "bg-brand-indigo/20 border-brand-indigo/40 text-brand-indigo"
+                      ? "bg-selected-bg-strong border-selected-border text-selected-text"
                       : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
                   )}
                 >
@@ -186,7 +187,7 @@ export function RepoList({
                   className={cn(
                     "w-3.5 h-3.5 text-text-muted transition-all duration-300",
                     "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
-                    isSelected && "opacity-100 translate-x-0 text-brand-indigo"
+                    isSelected && "opacity-100 translate-x-0 text-selected-text"
                   )}
                 />
               </button>

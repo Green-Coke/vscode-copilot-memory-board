@@ -103,23 +103,25 @@ function handleIncomingMessage(event: MessageEvent): void {
 async function handleMockRequest(
   request: AnyRequest
 ): Promise<ResponseMessage> {
-  // Dynamic import to avoid bundling core runtime in production
-  // In standalone mode, we use core's MemoryParser directly for mock data
-  const { MemoryParser } = await import("@memory-board/core");
-  const parser = new MemoryParser("/mock/copilot/memory");
+  // Standalone 浏览器模式无法访问本地磁盘上的 Copilot 内存目录，
+  // 因此这里直接返回内置的纯前端 mock 数据，让仓库 / 会话 / 文件树可被完整演示。
+  const { MOCK_REPOS, MOCK_SESSIONS, MOCK_ENTRIES } = await import(
+    "@/lib/mock-data"
+  );
 
   switch (request.type) {
     case "getRepos": {
-      const repos = await parser.scanRepositories();
       return {
         type: "getRepos",
         requestId: request.requestId,
-        payload: { repos },
+        payload: { repos: MOCK_REPOS },
         error: null,
       };
     }
     case "getSessionsByRepo": {
-      const sessions = await parser.getSessionsByRepo(request.payload.repoId);
+      const sessions = MOCK_SESSIONS.filter(
+        (s) => s.repoId === request.payload.repoId
+      );
       return {
         type: "getSessionsByRepo",
         requestId: request.requestId,
@@ -128,8 +130,8 @@ async function handleMockRequest(
       };
     }
     case "readMemoryContent": {
-      const entries = await parser.readMemoryContent(
-        request.payload.sessionId
+      const entries = MOCK_ENTRIES.filter(
+        (e) => e.sessionId === request.payload.sessionId
       );
       return {
         type: "readMemoryContent",

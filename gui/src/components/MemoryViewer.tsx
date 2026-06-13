@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Search, X, MessageSquare, Terminal } from "lucide-react";
 import { FileTree } from "@/components/FileTree";
 import { FilePreview } from "@/components/FilePreview";
-import { getMockFileTree, type MockFsNode } from "@/lib/mock-filetree";
+import { getMockFileTree, getMockRepoFileTree, type MockFsNode } from "@/lib/mock-filetree";
 
 /**
  * MemoryViewer 组件 Props 接口定义
@@ -22,6 +22,12 @@ interface MemoryViewerProps {
   sessionTitle?: string;
   /** 当前选中的会话 ID，用于加载 mock 文件树 */
   sessionId?: string;
+  /** 仓库级目录视图信号：传入 repoId 时切换为仓库骨架文件树 */
+  repoId?: string;
+  /** 仓库名称，用于 repo 模式下的标题展示 */
+  repoName?: string;
+  /** 当前视图模式：session（默认）展示会话相关文件，repo 展示整仓目录 */
+  viewMode?: "session" | "repo";
 }
 
 /**
@@ -58,39 +64,62 @@ export function MemoryViewer({
   loading,
   sessionTitle,
   sessionId,
+  repoId,
+  repoName,
+  viewMode = "session",
 }: MemoryViewerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFile, setSelectedFile] = useState<MockFsNode | null>(null);
   const [fileTree, setFileTree] = useState<MockFsNode[]>([]);
 
-  // 当会话 ID (sessionId) 发生变化时，重新获取 Mock 文件树，并默认预览首个文本文件
+  // 根据视图模式选择 mock 文件树数据源：
+  // - repo 模式：加载整个仓库的骨架目录，默认预览 README.md
+  // - session 模式：加载该会话涉及的文件子集，默认预览首个文本文件
   useEffect(() => {
-    if (sessionId) {
+    // 深度优先搜索（DFS）寻找文件树中第一个文本文件
+    const findFirstTextFile = (nodes: MockFsNode[]): MockFsNode | null => {
+      for (const node of nodes) {
+        if (node.type === "file" && node.fileType === "text") {
+          return node;
+        }
+        if (node.type === "dir" && node.children) {
+          const res = findFirstTextFile(node.children);
+          if (res) return res;
+        }
+      }
+      return null;
+    };
+
+    // 按名称查找文件节点，优先匹配 README.md
+    const findByName = (nodes: MockFsNode[], name: string): MockFsNode | null => {
+      for (const node of nodes) {
+        if (node.type === "file" && node.name.toLowerCase() === name.toLowerCase()) {
+          return node;
+        }
+        if (node.type === "dir" && node.children) {
+          const res = findByName(node.children, name);
+          if (res) return res;
+        }
+      }
+      return null;
+    };
+
+    if (viewMode === "repo" && repoId) {
+      const tree = getMockRepoFileTree(repoId);
+      setFileTree(tree);
+      setSearchQuery("");
+      const defaultFile = findByName(tree, "README.md") ?? findFirstTextFile(tree);
+      setSelectedFile(defaultFile);
+    } else if (sessionId) {
       const tree = getMockFileTree(sessionId);
       setFileTree(tree);
-      setSearchQuery(""); // 重置搜索词
-
-      // 深度优先搜索（DFS）寻找文件树中的第一个文本文件进行默认预览
-      const findFirstTextFile = (nodes: MockFsNode[]): MockFsNode | null => {
-        for (const node of nodes) {
-          if (node.type === "file" && node.fileType === "text") {
-            return node;
-          }
-          if (node.type === "dir" && node.children) {
-            const res = findFirstTextFile(node.children);
-            if (res) return res;
-          }
-        }
-        return null;
-      };
-
-      const defaultFile = findFirstTextFile(tree);
-      setSelectedFile(defaultFile);
+      setSearchQuery("");
+      setSelectedFile(findFirstTextFile(tree));
     } else {
       setFileTree([]);
       setSelectedFile(null);
     }
-  }, [sessionId]);
+  }, [viewMode, repoId, sessionId]);
 
   // 根据搜索关键字过滤后的文件树数据
   const filteredTree = useMemo(() => {
@@ -160,29 +189,31 @@ export function MemoryViewer({
               {sessionTitle}
             </h3>
             <p className="text-[10px] font-mono text-text-secondary mt-0.5">
-              Explorer Mode (Standalone Mock FS)
+              {viewMode === "repo"
+                ? `Repository Explorer${repoName ? ` · ${repoName}` : ""}`
+                : "Explorer Mode (Standalone Mock FS)"}
             </p>
           </div>
         </div>
 
-        {/* 过滤搜索框：用于查找文件树中的节点，带间距优化防止重叠 */}
+        {/* 过滤搜索框：放大镜固定在最右侧，搜索词存在时清空按钮自动向左避让，避免重叠 */}
         <div className="relative flex items-center w-full sm:w-[220px]">
-          <Search className="absolute left-3 w-4 h-4 text-text-muted" />
           <input
             type="text"
             placeholder="Filter files..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="cyber-input w-full pl-10 pr-10 py-1.5 font-sans font-medium placeholder-text-muted/60"
+            className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium placeholder-text-muted/60"
           />
-          {searchQuery && (
+          {searchQuery ? (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
+              className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3.5 h-3.5" />
             </button>
-          )}
+          ) : null}
+          <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
         </div>
       </div>
 

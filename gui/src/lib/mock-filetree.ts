@@ -184,6 +184,25 @@ body {
           fileType: "image",
           src: "https://picsum.photos/id/48/800/400",
         },
+        {
+          name: "ui-screenshot.png",
+          type: "file",
+          fileType: "image",
+          src: "https://picsum.photos/id/180/600/400",
+        },
+        {
+          name: "changelog.txt",
+          type: "file",
+          fileType: "text",
+          content: `变更记录 (${suffix})
+==========================
+
+- 2026-06-13  优化搜索框图标布局，放大镜迁移到输入框最右侧，避免与清空按钮重叠。
+- 2026-06-12  修复选中会话后 Memory Entries 文件树为空的问题，补齐 mock 文件预览。
+- 2026-06-10  提升整体显示比例，调整桌面端字号与三栏布局宽度。
+
+备注：这是一个纯文本 (.txt) 格式的示例文件，用于测试文本类预览能力。`,
+        },
       ],
     },
     {
@@ -229,6 +248,269 @@ body {
       name: "config.bin",
       type: "file",
       fileType: "unknown",
+    },
+    {
+      name: "notes.txt",
+      type: "file",
+      fileType: "text",
+      content: `笔记 (${suffix})
+==========================
+
+1. 演示用途的纯文本文档，用于测试 .txt 文件在右侧预览区的渲染效果。
+2. 点击左侧文件树的其它 .md / .json / .png 可以分别查看对应内容。
+3. 左侧搜索框放大镜现已固定在输入框最右侧，输入内容时清空按钮会自动向左避让，二者不再重叠。
+
+这是一些相对较长的文本行，用于验证  等宽字体在 pre 块中的换行与对齐效果：
+> Memory Board 帮助你快速浏览和审查 GitHub Copilot Chat 的本地会话上下文。`,
+    },
+    {
+      name: "manifest.json",
+      type: "file",
+      fileType: "text",
+      content: `{
+  "id": "${suffix}",
+  "name": "copilot-memory-board-demo",
+  "version": "1.0.0",
+  "description": "用于演示 Memory Entries 文件树与预览能力的 mock 项目清单",
+  "capturedAt": "2026-06-13T10:00:00.000Z",
+  "categories": ["preference", "context", "instruction", "knowledge"],
+  "stats": {
+    "entries": 12,
+    "files": 9,
+    "images": 3
+  },
+  "author": {
+    "name": "memory-board",
+    "type": "system"
+  }
+}`,
+    },
+  ];
+}
+
+/**
+ * 根据仓库 ID 生成仓库级骨架文件树
+ *
+ * 与会话级文件树（getMockFileTree）不同，这里展示整个仓库的完整目录结构，
+ * 包含 .vscode、docs、src、gui 等典型仓库骨架，便于演示 "仓库级目录" 视图。
+ *
+ * @param repoId 当前选中的仓库 ID，用于生成个性化标识
+ * @returns 多层级的 MockFsNode 数组，包含文本、JSON、Markdown、图片等示例文件
+ */
+export function getMockRepoFileTree(repoId: string): MockFsNode[] {
+  // 取仓库 ID 后缀片段，用于在示例内容中体现个性化数据
+  const suffix = repoId.split("-").pop() ?? "repo";
+
+  return [
+    {
+      name: ".vscode",
+      type: "dir",
+      children: [
+        {
+          name: "settings.json",
+          type: "file",
+          fileType: "text",
+          content: `{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.tabSize": 2,
+  "files.autoSave": "onFocusChange",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/pnpm-lock.yaml": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib"
+}`,
+        },
+        {
+          name: "extensions.json",
+          type: "file",
+          fileType: "text",
+          content: `{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-typescript-next"
+  ]
+}`,
+        },
+      ],
+    },
+    {
+      name: "docs",
+      type: "dir",
+      children: [
+        {
+          name: "architecture.md",
+          type: "file",
+          fileType: "text",
+          content: `# 架构说明
+
+Memory Board 采用三层结构：
+
+1. **GUI（前端）**：React + TypeScript，负责交互与展示。
+2. **Bridge（桥接层）**：在 standalone 浏览器模式与 VS Code webview 模式间抽象请求。
+3. **Core（共享核心）**：类型定义与内存解析器，可被多个宿主复用。
+
+> 当前查看的是仓库 \`${suffix}\` 的整体文件结构。`,
+        },
+        {
+          name: "protocol.md",
+          type: "file",
+          fileType: "text",
+          content: `# 通信协议
+
+GUI 与宿主之间通过受限的 postMessage 协议通信，
+所有请求都带 requestId，便于配对响应。`,
+        },
+        {
+          name: "screenshot.png",
+          type: "file",
+          fileType: "image",
+          src: "https://picsum.photos/seed/repo-docs-screenshot/800/500",
+        },
+      ],
+    },
+    {
+      name: "src",
+      type: "dir",
+      children: [
+        {
+          name: "extension.ts",
+          type: "file",
+          fileType: "text",
+          content: `// VS Code 扩展入口，注册 webview 并建立 bridge 通信
+import * as vscode from "vscode";
+import { WebviewProvider } from "./webview-provider";
+
+export function activate(context: vscode.ExtensionContext) {
+  const provider = new WebviewProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider("memory-board.view", provider)
+  );
+}`,
+        },
+        {
+          name: "webview-provider.ts",
+          type: "file",
+          fileType: "text",
+          content: `// 负责创建并持有 webview 实例，转发消息到 bridge
+import * as vscode from "vscode";
+
+export class WebviewProvider implements vscode.WebviewViewProvider {
+  constructor(private readonly extensionUri: vscode.Uri) {}
+
+  resolveWebviewView(view: vscode.WebviewView) {
+    view.webview.options = { enableScripts: true };
+    view.webview.html = this.getHtml(view.webview);
+  }
+
+  private getHtml(webview: vscode.Webview): string {
+    return "<!doctype html><html><body>Memory Board</body></html>";
+  }
+}`,
+        },
+      ],
+    },
+    {
+      name: "README.md",
+      type: "file",
+      fileType: "text",
+      content: `# Memory Board
+
+> 仓库级目录视图示例：\`${suffix}\`
+
+Memory Board 是一个用于浏览和审查 GitHub Copilot Chat 本地会话记忆的工具。
+
+## 特性
+
+- 📦 多仓库 / 多会话 / 多条目的层级浏览
+- 🎨 响应式三栏布局，桌面宽屏下放大显示
+- 🧩 同时支持独立浏览器模式与 VS Code webview 模式
+
+## 快速开始
+
+\`\`\`bash
+pnpm install
+pnpm dev
+\`\`\`
+
+## 目录结构
+
+- \`gui/\` 前端 React 应用
+- \`extensions/vscode/\` VS Code 扩展宿主
+- \`core/\` 跨宿主共享的类型与解析逻辑
+`,
+    },
+    {
+      name: "package.json",
+      type: "file",
+      fileType: "text",
+      content: `{
+  "name": "vscode-copilot-memory-board",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @memory-board/gui dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}`,
+    },
+    {
+      name: "tsconfig.base.json",
+      type: "file",
+      fileType: "text",
+      content: `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@memory-board/core": ["core/src/index.ts"]
+    }
+  }
+}`,
+    },
+    {
+      name: "changelog.txt",
+      type: "file",
+      fileType: "text",
+      content: `Changelog (${suffix})
+==========================
+
+[1.0.0] - 2026-06-13
+- 新增仓库级目录视图
+- 统一搜索框放大镜至右侧
+- 提升选中态颜色对比度
+
+[0.9.0] - 2026-05-28
+- 初版三栏布局
+- Mock 文件树与预览能力`,
+    },
+    {
+      name: "banner.png",
+      type: "file",
+      fileType: "image",
+      src: "https://picsum.photos/seed/repo-banner/900/300",
+    },
+    {
+      name: "logo.svg",
+      type: "file",
+      fileType: "text",
+      content: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="40" fill="#2563eb" />
+  <text x="50" y="58" font-size="28" text-anchor="middle" fill="#fff">M</text>
+</svg>`,
     },
   ];
 }
