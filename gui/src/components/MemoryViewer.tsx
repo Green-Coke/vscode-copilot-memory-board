@@ -7,7 +7,7 @@ import type { MemoryEntry, MemoryCategory } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { 
   FileText, Tag, Copy, Check, Star, Search, X, 
-  Clock, BookOpen, Info, ChevronRight, Terminal 
+  Clock, BookOpen, Info, ChevronRight, Terminal, MessageSquare
 } from "lucide-react";
 
 interface MemoryViewerProps {
@@ -240,7 +240,8 @@ export function MemoryViewer({
   // ---------------------------------------------------------------------------
   if (loading) {
     return (
-      <div className="flex flex-col gap-3 p-4">
+      /* 加载骨架屏容器，使用更大的自适应左侧间距进一步防止内容在多栏下粘连 */
+      <div className="flex flex-col gap-3 pl-4 min-[900px]:pl-10 pr-4 py-4">
         <div className="h-8 rounded bg-surface-3 animate-pulse mb-1" />
         <div className="h-6 rounded bg-surface-3 animate-pulse mb-3" />
         {[1, 2].map((i) => (
@@ -286,15 +287,21 @@ export function MemoryViewer({
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Header Search & Title */}
-      <div className="p-3 border-b border-border-default bg-surface-1/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-xs font-bold text-text-primary truncate tracking-wide font-display">
-            {sessionTitle}
-          </h3>
-          <p className="text-[10px] font-mono text-text-secondary mt-0.5">
-            {entries.length} entries parsed
-          </p>
+      {/* 头部标题与搜索区域：使用 pl-10 拓宽左侧边距，并新增会话发光图标进行视觉中心对齐 */}
+      <div className="pl-4 min-[900px]:pl-10 pr-3 py-3 border-b border-border-default bg-surface-1/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0 flex items-center gap-3">
+          {/* 会话标识图标，其圆角与发光有助于提升视觉高级感，并将标题文字右推实现中心对齐 */}
+          <div className="flex items-center justify-center w-8.5 h-8.5 rounded-lg border border-brand-indigo/35 bg-brand-indigo/10 text-brand-indigo shadow-[0_0_12px_rgba(122,162,247,0.15)] shrink-0">
+            <MessageSquare className="w-4.5 h-4.5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-xs font-bold text-text-primary truncate tracking-wide font-display">
+              {sessionTitle}
+            </h3>
+            <p className="text-[10px] font-mono text-text-secondary mt-0.5">
+              {entries.length} entries parsed
+            </p>
+          </div>
         </div>
 
         {/* Local Search Input */}
@@ -318,8 +325,8 @@ export function MemoryViewer({
         </div>
       </div>
 
-      {/* Category Horizontal Filter Bar */}
-      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border-subtle bg-surface-2/10 overflow-x-auto whitespace-nowrap scrollbar-none">
+      {/* 类目水平过滤器栏：增加左侧自适应 Padding 到 pl-10 以保持跟头部对齐 */}
+      <div className="flex items-center gap-1.5 pl-4 min-[900px]:pl-10 pr-3 py-2 border-b border-border-subtle bg-surface-2/10 overflow-x-auto whitespace-nowrap scrollbar-none">
         <span className="text-[9px] font-bold text-text-secondary font-display uppercase tracking-widest mr-1">
           Filter:
         </span>
@@ -363,8 +370,8 @@ export function MemoryViewer({
         </button>
       </div>
 
-      {/* Scrollable Entry Cards */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      {/* 可滚动的内存条目卡片列表：拉开左侧 Padding 到 pl-10，防止卡片文本贴在中间分界线上 */}
+      <div className="flex-1 overflow-y-auto pl-4 min-[900px]:pl-10 pr-4 py-4 flex flex-col gap-3">
         {filteredEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center font-mono text-[11px] text-text-muted">
             <BookOpen className="w-8 h-8 mb-3 opacity-30 text-text-muted" />

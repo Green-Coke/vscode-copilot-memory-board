@@ -194,24 +194,29 @@ export function AdaptiveLayout({
       {/* Main Top Header */}
       <AppHeader stats={stats} />
 
-      {/* Wide layout: Three columns (≥900px) */}
+      {/* 宽屏布局（≥900px）：三栏比例自适应布局，带有最小/最大宽度限制 */}
       <div className="hidden min-[900px]:flex flex-1 min-h-0 z-10 relative">
-        <div className="w-[280px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
+        {/* Repositories 仓库栏：占宽约 20%，最小 220px，最大 320px */}
+        <div className="w-[20%] min-w-[220px] max-w-[320px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
           {repoPanel}
         </div>
-        <div className="w-[290px] shrink-0 border-r border-border-default/80 bg-surface-1/30 backdrop-blur-sm">
+        {/* Sessions 会话栏：占宽约 25%，最小 240px，最大 360px */}
+        <div className="w-[25%] min-w-[240px] max-w-[360px] shrink-0 border-r border-border-default/80 bg-surface-1/30 backdrop-blur-sm">
           {sessionPanel}
         </div>
+        {/* Memory Entries 内存条目栏：填充剩余所有宽度 */}
         <div className="flex-1 min-w-0 bg-surface-1/10">
           {entryPanel}
         </div>
       </div>
 
-      {/* Medium layout: Two columns (500–899px) */}
+      {/* 中等屏幕布局（500–899px）：双栏比例自适应布局 */}
       <div className="hidden min-[500px]:flex min-[900px]:hidden flex-1 min-h-0 z-10 relative">
-        <div className="w-[260px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
+        {/* 左侧栏：占宽约 30%，最小 200px，最大 300px */}
+        <div className="w-[30%] min-w-[200px] max-w-[300px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
           {currentView === "repos" ? repoPanel : sessionPanel}
         </div>
+        {/* 右侧主视口栏：填充剩余宽度 */}
         <div className="flex-1 min-w-0 bg-surface-1/20">
           {currentView === "entries" ? entryPanel : sessionPanel}
         </div>

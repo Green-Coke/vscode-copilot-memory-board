@@ -4,45 +4,122 @@
    Memory Board — Design System Tokens (Tailwind v4)
    ============================================================================ */
 
+/* ============================================================================
+   Memory Board — 设计系统主题 Token (兼容 VS Code 主题与独立极地深海配色)
+   ============================================================================ */
+
+:root {
+  /* 独立（Standalone）模式下的全新 Tokyo Night（东京之夜）雅致深曜蓝配色体系 */
+  --ui-surface-0: #1a1b26; /* 主视口背景色，深曜蓝灰 */
+  --ui-surface-1: #16161e; /* 侧边栏/列表区背景色，更深蓝色，形成明暗纵深 */
+  --ui-surface-2: #20212d; /* 正常卡片底色及输入框聚焦背景 */
+  --ui-surface-3: #2f3549; /* 卡片悬停、列表选中及二级容器底色 */
+  --ui-surface-4: #444b6a; /* 强调背景及较亮色块 */
+
+  /* 护眼柔和前景色 */
+  --ui-text-primary: #c0caf5;   /* 主文本，软调淡蓝灰 */
+  --ui-text-secondary: #a9b1d6; /* 次级文本，中灰色 */
+  --ui-text-muted: #565f89;     /* 禁用或极暗淡注释文本 */
+
+  /* 磨砂玻璃与分界边框 Token */
+  --ui-border-default: rgba(86, 95, 137, 0.25); /* 默认边框，使用灰蓝 */
+  --ui-border-hover: rgba(122, 162, 247, 0.45);   /* 悬停态边框，软蓝色发光 */
+  --ui-border-subtle: rgba(86, 95, 137, 0.12);   /* 暗淡分割边框 */
+
+  /* 核心突出与功能强调色 */
+  --ui-brand-indigo: #7aa2f7;  /* 柔和天蓝品牌色 */
+  --ui-brand-purple: #bb9af3;  /* 雅致丁香紫 */
+  --ui-accent-cyan: #7dcfff;    /* 亮天青色 */
+  --ui-accent-pink: #f7768e;    /* 玫瑰红/粉红 */
+
+  /* 各分类标记颜色，采用更柔和低饱和度的专业配色 */
+  --ui-category-preference: #e0af68; /* 温暖金橙 */
+  --ui-category-context: #7aa2f7;    /* 天蓝色 */
+  --ui-category-instruction: #f7768e;  /* 玫瑰粉 */
+  --ui-category-knowledge: #9ece6a;    /* 柔和嫩绿 */
+  --ui-category-pattern: #9d7cd8;      /* 薰衣草紫 */
+  --ui-category-unknown: #565f89;      /* 灰蓝色 */
+  --ui-category-bookmark: #f7768e;     /* 玫瑰粉 */
+}
+
+/* VS Code 运行环境下的主题变量映射 */
+body.vscode-dark,
+body.vscode-light,
+body.vscode-high-contrast {
+  /* 背景映射 */
+  --ui-surface-0: var(--vscode-editor-background);
+  --ui-surface-1: var(--vscode-sideBar-background, var(--vscode-editorWidget-background, var(--vscode-editor-background)));
+  --ui-surface-2: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.05));
+  --ui-surface-3: var(--vscode-list-inactiveSelectionBackground, rgba(255, 255, 255, 0.08));
+  --ui-surface-4: var(--vscode-list-activeSelectionBackground, var(--vscode-button-background, #6366f1));
+
+  /* 文本映射 */
+  --ui-text-primary: var(--vscode-editor-foreground, var(--vscode-foreground, #f8fafc));
+  --ui-text-secondary: var(--vscode-descriptionForeground, var(--vscode-foreground, #cbd5e1));
+  --ui-text-muted: var(--vscode-disabledForeground, #64748b);
+
+  /* 边框映射 */
+  --ui-border-default: var(--vscode-panel-border, var(--vscode-sideBar-border, rgba(255, 255, 255, 0.1)));
+  --ui-border-hover: var(--vscode-focusBorder, #6366f1);
+  --ui-border-subtle: var(--vscode-widget-border, rgba(255, 255, 255, 0.05));
+
+  /* 品牌与强调色映射 */
+  --ui-brand-indigo: var(--vscode-textLink-foreground, var(--vscode-button-background, #6366f1));
+  --ui-brand-purple: var(--vscode-textLink-activeForeground, #a855f7);
+  --ui-accent-cyan: var(--vscode-editorMarkerNavigationInfo-background, #14b8a6);
+  --ui-accent-pink: var(--vscode-editorMarkerNavigationError-background, #f43f5e);
+}
+
+/* VS Code 浅色主题下的特定颜色微调以满足对比度要求 */
+body.vscode-light {
+  --ui-category-preference: #b45309; /* 深黄褐色 */
+  --ui-category-context: #1d4ed8;      /* 靛蓝色 */
+  --ui-category-instruction: #b91c1c;  /* 红色 */
+  --ui-category-knowledge: #047857;    /* 深翠绿色 */
+  --ui-category-pattern: #7e22ce;      /* 紫罗兰色 */
+  --ui-category-unknown: #475569;      /* 蓝灰色 */
+  --ui-category-bookmark: #be123c;     /* 深玫瑰红 */
+}
+
 @theme {
-  /* Override Default Fonts */
+  /* 覆盖默认字体 */
   --font-sans: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, Roboto, sans-serif;
   --font-display: "Outfit", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Fira Code, Consolas, Monaco, monospace;
 
-  /* Cyberpunk / Deep Obsidian Theme Colors */
-  --color-surface-0: #030306;
-  --color-surface-1: #09090f;
-  --color-surface-2: #101018;
-  --color-surface-3: #171724;
-  --color-surface-4: #202030;
+  /* 主题颜色映射 */
+  --color-surface-0: var(--ui-surface-0);
+  --color-surface-1: var(--ui-surface-1);
+  --color-surface-2: var(--ui-surface-2);
+  --color-surface-3: var(--ui-surface-3);
+  --color-surface-4: var(--ui-surface-4);
 
-  /* Standard Text Hierarchy */
-  --color-text-primary: #fafafa;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #52525b;
+  /* 标准文本层级 */
+  --color-text-primary: var(--ui-text-primary);
+  --color-text-secondary: var(--ui-text-secondary);
+  --color-text-muted: var(--ui-text-muted);
 
-  /* Glass Border Tokens */
-  --color-border-default: rgba(255, 255, 255, 0.055);
-  --color-border-hover: rgba(255, 255, 255, 0.12);
-  --color-border-subtle: rgba(255, 255, 255, 0.03);
+  /* 磨砂玻璃边框 Token */
+  --color-border-default: var(--ui-border-default);
+  --color-border-hover: var(--ui-border-hover);
+  --color-border-subtle: var(--ui-border-subtle);
 
-  /* Cyber Neon Highlighters */
-  --color-accent-cyan: #06b6d4;
-  --color-accent-pink: #f43f5e;
-  --color-brand-indigo: #6366f1;
-  --color-brand-purple: #8b5cf6;
+  /* 核心强调色 */
+  --color-brand-indigo: var(--ui-brand-indigo);
+  --color-brand-purple: var(--ui-brand-purple);
+  --color-accent-cyan: var(--ui-accent-cyan);
+  --color-accent-pink: var(--ui-accent-pink);
 
-  /* Category Specific Glow Colors */
-  --color-category-preference: #eab308;
-  --color-category-context: #3b82f6;
-  --color-category-instruction: #ef4444;
-  --color-category-knowledge: #10b981;
-  --color-category-pattern: #a855f7;
-  --color-category-unknown: #71717a;
-  --color-category-bookmark: #f43f5e;
+  /* 各类目专用发光色 */
+  --color-category-preference: var(--ui-category-preference);
+  --color-category-context: var(--ui-category-context);
+  --color-category-instruction: var(--ui-category-instruction);
+  --color-category-knowledge: var(--ui-category-knowledge);
+  --color-category-pattern: var(--ui-category-pattern);
+  --color-category-unknown: var(--ui-category-unknown);
+  --color-category-bookmark: var(--ui-category-bookmark);
 
-  /* Animations & Easing */
+  /* 动画曲线与延迟 */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-sine: cubic-bezier(0.445, 0.05, 0.55, 0.95);
 }
@@ -142,7 +219,7 @@ body {
   animation: float-slow 25s infinite alternate-reverse var(--ease-in-out-sine);
 }
 
-/* Additional grid overlay for IDE look and feel */
+/* 添加额外的网格叠加层，使页面具有集成开发环境（IDE）的质感与外观 */
 .cyber-grid {
   position: absolute;
   top: 0;
@@ -156,6 +233,13 @@ body {
   pointer-events: none;
   z-index: 1;
   opacity: 0.85;
+}
+
+/* VS Code 浅色主题下的背景网格颜色，使用微弱的黑色网格以适应白色底色 */
+body.vscode-light .cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
 }
 
 /* ============================================================================
