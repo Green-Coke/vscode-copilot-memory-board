@@ -222,8 +222,10 @@ export function MemoryViewer({
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* 头部标题与搜索区域 */}
-      <div className="pl-4 min-[900px]:pl-10 pr-3 py-3 border-b border-border-default bg-surface-1/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
+      {/* 头部标题与搜索区域
+          折叠按钮已转交各 Panel 标题栏 leadingAction 渲染，
+          此处不再需要为左上角浮层预留 pl-10 内边距，统一使用 pl-4 */}
+      <div className="pl-4 pr-3 py-3 border-b border-border-default bg-surface-1/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
         <div className="min-w-0 flex items-center gap-3">
           <div className="flex items-center justify-center w-8.5 h-8.5 rounded-lg border border-brand-indigo/35 bg-brand-indigo/10 text-brand-indigo shadow-[0_0_12px_rgba(122,162,247,0.15)] shrink-0">
             <Terminal className="w-4.5 h-4.5 text-brand-indigo" />

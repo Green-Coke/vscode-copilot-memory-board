@@ -15,7 +15,7 @@ import {
   useUiPreferences,
   useWorkspaceState,
 } from "@/hooks/use-bridge";
-import { AdaptiveLayout, Panel, type ViewMode } from "@/components/Layout";
+import { AdaptiveLayout, Panel, RepoCollapseButton, type ViewMode } from "@/components/Layout";
 import { RepoList } from "@/components/RepoList";
 import { SessionList } from "@/components/SessionList";
 import { MemoryViewer } from "@/components/MemoryViewer";
@@ -81,18 +81,28 @@ export function App() {
   }, []);
 
   /**
+   * 未选中仓库时禁止折叠仓库栏：保留选中仓库才能折叠/展开。
+   * 这里转换为 RepoCollapseButton 的 disabled 状态，按钮仍可见但置灰不可点。
+   */
+  const repoCollapseDisabled = !selectedRepo;
+
+  /**
    * 仓库栏切换统一入口：
    * - 宽屏：仅折叠 / 展开仓库列，保留当前选中仓库与会话。
    * - 中屏 / 窄屏：若当前在 sessions 或 entries 视图，点击则回到仓库列表，
    *   保证“选仓库后点左上角按钮没有效果”的 bug 不再出现。
+   * 未选择仓库时统一 no-op，避免被绕过 disabled 进行状态編排。
    */
   const handleToggleRepoBar = useCallback(() => {
+    if (repoCollapseDisabled) {
+      return;
+    }
     if (window.matchMedia("(min-width: 900px)").matches) {
       setRepoPanelCollapsed((prev) => !prev);
       return;
     }
     setCurrentView((prev) => (prev === "repos" ? "sessions" : "repos"));
-  }, []);
+  }, [repoCollapseDisabled]);
 
   /**
    * 切换查看仓库级目录：进入时清空当前 session，右侧展示整个仓库的骨架
@@ -153,6 +163,19 @@ export function App() {
   // Render
   // ---------------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------------
+  // 仓库栏折叠按钮：VS Code 插件模式下注入到对应 Panel 的 leadingAction。
+  // 仓库展开时需 Repositories 标题栏承载、折叠后需 Sessions 标题栏图标左侧承载。
+  // standalone 模式不需要（已由 AppHeader 渲染），这里只在 VS Code 环境下构造。
+  // ---------------------------------------------------------------------------
+  const repoCollapseLeading = (
+    <RepoCollapseButton
+      collapsed={repoPanelCollapsed}
+      onToggle={handleToggleRepoBar}
+      disabled={repoCollapseDisabled}
+    />
+  );
+
   return (
     <AdaptiveLayout
       currentView={currentView}
@@ -160,7 +183,6 @@ export function App() {
       stats={stats}
       repoPanelCollapsed={repoPanelCollapsed}
       setRepoPanelCollapsed={setRepoPanelCollapsed}
-      onToggleRepoBar={handleToggleRepoBar}
       repos={repos ?? []}
       selectedRepo={selectedRepo}
       onSelectRepo={handleSelectRepo}
@@ -168,6 +190,7 @@ export function App() {
         <Panel
           title="Repositories"
           icon={<FolderGit2 className="w-3.5 h-3.5 text-text-secondary" />}
+          leadingAction={repoCollapseLeading}
         >
           <RepoList
             repos={repos ?? []}
@@ -189,6 +212,7 @@ export function App() {
         <Panel
           title="Sessions"
           icon={<MessageSquare className="w-3.5 h-3.5 text-text-secondary" />}
+          leadingAction={repoPanelCollapsed ? repoCollapseLeading : undefined}
         >
           <SessionList
             sessions={sessions ?? []}

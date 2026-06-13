@@ -33,6 +33,20 @@
           "title": "Memory Board",
           "icon": "resources/icon.svg"
         }
+      ],
+      "secondarySideBar": [
+        {
+          "id": "memory-board-secondary-sidebar-container",
+          "title": "Memory Board",
+          "icon": "resources/icon.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "memory-board-panel-container",
+          "title": "Memory Board",
+          "icon": "resources/icon.svg"
+        }
       ]
     },
     "views": {
@@ -41,7 +55,23 @@
           "id": "memoryBoard.mainView",
           "name": "Memory Board",
           "type": "webview",
-          "when": "memoryBoard.movedToPanel == false"
+          "when": "memoryBoard.activeLocation == sidebar"
+        }
+      ],
+      "memory-board-secondary-sidebar-container": [
+        {
+          "id": "memoryBoard.secondaryView",
+          "name": "Memory Board",
+          "type": "webview",
+          "when": "memoryBoard.activeLocation == secondarySidebar"
+        }
+      ],
+      "memory-board-panel-container": [
+        {
+          "id": "memoryBoard.bottomPanelView",
+          "name": "Memory Board",
+          "type": "webview",
+          "when": "memoryBoard.activeLocation == panel"
         }
       ]
     },
@@ -53,29 +83,84 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "memoryBoard.moveToEditor",
-        "title": "Memory Board: Move to Editor Area",
-        "category": "Memory Board",
-        "icon": "$(link-external)"
+        "command": "memoryBoard.moveToPrimarySidebar",
+        "title": "Memory Board: Move to Primary Side Bar",
+        "category": "Memory Board"
       },
       {
-        "command": "memoryBoard.openInPanel",
-        "title": "Memory Board: Open in Panel",
-        "category": "Memory Board",
-        "icon": "$(link-external)"
+        "command": "memoryBoard.moveToEditor",
+        "title": "Memory Board: Move to Editor Area",
+        "category": "Memory Board"
+      },
+      {
+        "command": "memoryBoard.moveToSecondarySidebar",
+        "title": "Memory Board: Move to Secondary Side Bar",
+        "category": "Memory Board"
+      },
+      {
+        "command": "memoryBoard.moveToPanel",
+        "title": "Memory Board: Move to Panel Area",
+        "category": "Memory Board"
+      },
+      {
+        "command": "memoryBoard.moveToNewWindow",
+        "title": "Memory Board: Move to New Window",
+        "category": "Memory Board"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "memoryBoard.moveToEditor",
-          "when": "view == memoryBoard.mainView && memoryBoard.movedToPanel == false",
+          "command": "memoryBoard.refresh",
+          "when": "view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView",
           "group": "navigation"
         },
         {
-          "command": "memoryBoard.refresh",
-          "when": "view == memoryBoard.mainView",
-          "group": "navigation"
+          "command": "memoryBoard.moveToPrimarySidebar",
+          "when": "(view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView) && memoryBoard.activeLocation != sidebar",
+          "group": "1_movement@1"
+        },
+        {
+          "command": "memoryBoard.moveToEditor",
+          "when": "view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView",
+          "group": "1_movement@2"
+        },
+        {
+          "command": "memoryBoard.moveToSecondarySidebar",
+          "when": "(view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView) && memoryBoard.activeLocation != secondarySidebar",
+          "group": "1_movement@3"
+        },
+        {
+          "command": "memoryBoard.moveToPanel",
+          "when": "(view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView) && memoryBoard.activeLocation != panel",
+          "group": "1_movement@4"
+        },
+        {
+          "command": "memoryBoard.moveToNewWindow",
+          "when": "view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView",
+          "group": "1_movement@5"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "memoryBoard.moveToPrimarySidebar",
+          "when": "activeWebviewPanelId == memoryBoard.panelView",
+          "group": "1_movement@1"
+        },
+        {
+          "command": "memoryBoard.moveToSecondarySidebar",
+          "when": "activeWebviewPanelId == memoryBoard.panelView",
+          "group": "1_movement@2"
+        },
+        {
+          "command": "memoryBoard.moveToPanel",
+          "when": "activeWebviewPanelId == memoryBoard.panelView",
+          "group": "1_movement@3"
+        },
+        {
+          "command": "memoryBoard.moveToNewWindow",
+          "when": "activeWebviewPanelId == memoryBoard.panelView",
+          "group": "1_movement@4"
         }
       ]
     }

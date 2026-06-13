@@ -336,17 +336,30 @@ body.vscode-high-contrast .glass-panel-hover:hover {
   background: rgba(255, 255, 255, 1);
 }
 
-/* VS Code 深色与高对比度主题下的输入框背景，恢复深色 */
+/* VS Code 深色与高对比度主题下的输入框背景：从过深的 rgba(8,8,12,.6)
+   改为更贴近 surrounding surface 的浅灰背景，避免搜索框形成突兀的深色块 */
+/* VS Code 运行环境（包含深色、浅色、高对比度主题）下的输入框背景与边框，
+   直接绑定 VS Code 原生自带的主题输入框配色变量，保持输入框与原生面板配色完全和谐一致 */
 body.vscode-dark .cyber-input,
+body.vscode-light .cyber-input,
 body.vscode-high-contrast .cyber-input {
-  background: rgba(8, 8, 12, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--vscode-input-background, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.1));
+  color: var(--vscode-input-foreground, var(--ui-text-primary));
+}
+
+body.vscode-dark .cyber-input::placeholder,
+body.vscode-light .cyber-input::placeholder,
+body.vscode-high-contrast .cyber-input::placeholder {
+  color: var(--vscode-input-placeholderForeground, var(--ui-text-muted));
 }
 
 body.vscode-dark .cyber-input:focus,
+body.vscode-light .cyber-input:focus,
 body.vscode-high-contrast .cyber-input:focus {
-  background: rgba(8, 8, 12, 0.8);
-  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
+  background: var(--vscode-input-background);
+  border-color: var(--vscode-focusBorder, var(--color-brand-indigo));
+  box-shadow: 0 0 0 2px var(--vscode-focusBorder, rgba(122, 162, 247, 0.2));
 }
 
 /* ============================================================================

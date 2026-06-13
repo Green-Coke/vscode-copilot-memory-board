@@ -68,19 +68,38 @@ interface PanelProps {
   children: ReactNode;
   className?: string;
   action?: ReactNode;
+  /**
+   * 标题图标左侧的引导操作位（leading action）。
+   * VS Code 模式下，仓库折叠按钮挂在这里，避免浮层与标题图标/文字重叠。
+   */
+  leadingAction?: ReactNode;
 }
 
-export function Panel({ title, icon, children, className, action }: PanelProps) {
+/**
+ * 面板容器组件：统一管理标题栏（含引导操作位与尾部操作位）与可滚动内容区。
+   * leadingAction 渲染在图标之前，避免与标题文字/图标在左上角发生视觉重叠。
+   */
+export function Panel({ title, icon, children, className, action, leadingAction }: PanelProps) {
+  // 这是一个面板容器组件，主要负责统一管理标题栏和可滚动内容区。
+  // 若标题是 "Repositories" 且传入了折叠按钮 leadingAction，则只显示折叠按钮，隐藏图标和标题以防左上角发生重叠。
+  const shouldHideTitleAndIcon = title === "Repositories" && leadingAction;
+
   return (
     <div className={cn("flex flex-col h-full min-h-0 relative z-10", className)}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-default bg-surface-2/30 backdrop-blur-md">
         <div className="flex items-center gap-2">
-          <div className="text-text-secondary flex items-center justify-center">
-            {icon}
-          </div>
-          <h2 className="text-[11px] font-bold tracking-widest text-text-secondary font-display uppercase">
-            {title}
-          </h2>
+          {/* 渲染引导操作位，如侧栏展开折叠按钮 */}
+          {leadingAction}
+          {!shouldHideTitleAndIcon && (
+            <>
+              <div className="text-text-secondary flex items-center justify-center">
+                {icon}
+              </div>
+              <h2 className="text-[11px] font-bold tracking-widest text-text-secondary font-display uppercase">
+                {title}
+              </h2>
+            </>
+          )}
         </div>
         {action}
       </div>
@@ -278,35 +297,46 @@ interface LayoutProps {
   stats?: AppHeaderProps["stats"];
   repoPanelCollapsed?: boolean;
   setRepoPanelCollapsed?: (collapsed: boolean) => void;
-  /**
-   * 统一的仓库栏切换处理器：在宽屏、中屏、窄屏下都负责显隐仓库面板，
-   * 调用方需自行处理状态编排（例如从 entries 回到 repos 视图）。
-   */
-  onToggleRepoBar?: () => void;
   repos?: any[];
   selectedRepo?: any;
   onSelectRepo?: (repo: any) => void;
 }
 
 /**
- * 仓库栏切换按钮：在 VS Code 插件模式下没有 AppHeader，
- * 由这个紧凑按钮提供恢复入口，放在当前可见列的固定上沿。
- */
-function RepoBarToggleButton({
+ * 仓库栏折叠按钮：VS Code 插件模式下没有 AppHeader，
+ * 这个紧凑按钮提供展开/折叠入口，挂在 Panel 标题栏图标左侧。
+ *
+   * disabled=true（未选择仓库）时按钮置灰且不可点击，但仍保持可见，
+   * 明确传达“当前不可折叠”的状态；由 App.tsx 通过 Panel 的 leadingAction 注入。
+   */
+export function RepoCollapseButton({
   collapsed,
   onToggle,
+  disabled = false,
 }: {
   collapsed: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
-      onClick={onToggle}
+      type="button"
+      onClick={disabled ? undefined : onToggle}
+      disabled={disabled}
+      aria-disabled={disabled}
+      title={
+        disabled
+          ? "未选择仓库时不可折叠"
+          : collapsed
+            ? "展开仓库栏"
+            : "折叠仓库栏"
+      }
       className={cn(
-        "p-1.5 rounded hover:bg-surface-3 transition-colors cursor-pointer",
-        "text-text-secondary hover:text-brand-indigo flex items-center justify-center shrink-0"
+        "p-1.5 rounded transition-colors flex items-center justify-center shrink-0",
+        disabled
+          ? "opacity-40 cursor-not-allowed text-text-muted"
+          : "hover:bg-surface-3 cursor-pointer text-text-secondary hover:text-brand-indigo"
       )}
-      title={collapsed ? "展开仓库栏" : "折叠仓库栏"}
     >
       {collapsed ? (
         <PanelLeftOpen className="w-4 h-4" />
@@ -332,31 +362,19 @@ export function AdaptiveLayout({
   stats,
   repoPanelCollapsed = false,
   setRepoPanelCollapsed,
-  onToggleRepoBar,
   repos,
   selectedRepo,
   onSelectRepo,
 }: LayoutProps) {
-  /**
-   * 统一的折叠切换入口：
-   * - 提供了 onToggleRepoBar 时，状态编排交给上层（App）。
-   * - 否则回退到只切 setRepoPanelCollapsed，保持向后兼容。
-   */
-  const handleToggle = () => {
-    if (onToggleRepoBar) {
-      onToggleRepoBar();
-    } else {
-      setRepoPanelCollapsed?.(!repoPanelCollapsed);
-    }
-  };
-
   return (
     <div className="flex flex-col h-full relative overflow-hidden select-none bg-surface-0">
       {/* Matrix Mesh Backdrops */}
       <div className="cyber-bg" />
       <div className="cyber-grid" />
 
-      {/* Main Top Header —— 仅 standalone 模式渲染完整品牌头部；VS Code 模式去掉整条顶栏 */}
+      {/* Main Top Header —— 仅 standalone 模式渲染完整品牌头部；VS Code 模式去掉整条顶栏。
+          VS Code 模式下，仓库栏折叠按钮由 App.tsx 通过各 Panel 的 leadingAction 注入，
+          因此本组件不再在 layout 中渲染任何 absolute 浮层。 */}
       {!isVscode && (
         <AppHeader
           stats={stats}
@@ -370,22 +388,15 @@ export function AdaptiveLayout({
 
       {/* 宽屏布局（≥900px）：三栏比例自适应布局，带有最小/最大宽度限制 */}
       <div className="hidden min-[900px]:flex flex-1 min-h-0 z-10 relative">
-        {/* VS Code 模式下：在当前可见区间上沿放仓库栏切换按钮 */}
-        {isVscode && (
-          <div className="absolute top-2 left-2 z-20">
-            <RepoBarToggleButton
-              collapsed={repoPanelCollapsed}
-              onToggle={handleToggle}
-            />
-          </div>
-        )}
-        {/* Repositories 仓库栏：占宽约 22%，最小 260px，最大 520px */}
+        {/* Repositories 仓库栏：占宽约 22%，最小 260px，最大 520px。
+            其标题栏左侧的折叠按钮由 App.tsx 构建的 Panel 的 leadingAction 提供。 */}
         {!repoPanelCollapsed && (
           <div className="w-[22%] min-w-[260px] max-w-[520px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
             {repoPanel}
           </div>
         )}
-        {/* Sessions 会话栏：在折叠时加宽占约 28%，最小 280px，最大 560px / 520px */}
+        {/* Sessions 会话栏：在折叠时加宽占约 28%，最小 280px，最大 560px / 520px。
+            仓库折叠后，折叠按钮随 leadingAction 挂会在这里的 Panel 标题栏图标左侧。 */}
         <div className={cn(
           "shrink-0 border-r border-border-default/80 bg-surface-1/30 backdrop-blur-sm",
           repoPanelCollapsed ? "w-[28%] min-w-[280px] max-w-[560px]" : "w-[26%] min-w-[280px] max-w-[520px]"
@@ -399,23 +410,12 @@ export function AdaptiveLayout({
       </div>
 
       {/* 中等屏幕布局（500–899px）：双栏“列表 / 详情”导航。
-          修复：不再把左列写死成 `currentView !== repos => sessionPanel`，
-          选仓库后再点仓库栏按钮可切回 repos 列表，复制会话列表的 bug 不再出现。
           中屏左列规则：
-          - repos 视图：仓库列表
+          - repos 视图：仓库列表（标题栏内可渲染折叠按钮）
           - sessions 视图：会话列表
           - entries 视图：会话列表（主列为条目/详情，保持上下文） */}
       <div className="hidden min-[500px]:flex min-[900px]:hidden flex-1 min-h-0 z-10 relative">
         <div className="w-[40%] min-w-[220px] max-w-[420px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm relative">
-          {/* 中屏左列上沿也放仓库栏切换按钮（VS Code 模式下尤其重要，因为没有顶栏） */}
-          {isVscode && (
-            <div className="absolute top-2 left-2 z-20">
-              <RepoBarToggleButton
-                collapsed={repoPanelCollapsed}
-                onToggle={handleToggle}
-              />
-            </div>
-          )}
           {currentView === "repos" ? repoPanel : sessionPanel}
         </div>
         {/* 右侧主视口栏：填充剩余宽度 */}
@@ -428,15 +428,6 @@ export function AdaptiveLayout({
 
       {/* Narrow layout: Single column (<500px / sidebar) */}
       <div className="flex min-[500px]:hidden flex-col flex-1 min-h-0 z-10 relative">
-        {/* VS Code 模式下：窄屏单列也提供按钮，保证不会失去恢复入口 */}
-        {isVscode && (
-          <div className="flex items-center justify-start px-2 py-2 border-b border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
-            <RepoBarToggleButton
-              collapsed={repoPanelCollapsed}
-              onToggle={handleToggle}
-            />
-          </div>
-        )}
         {breadcrumbItems && breadcrumbItems.length > 1 && (
           <Breadcrumb items={breadcrumbItems} />
         )}

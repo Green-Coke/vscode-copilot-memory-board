@@ -112,11 +112,8 @@ export function RepoList({
 
   return (
     <div className="flex flex-col h-full">
-      {/* 排序控件 */}
-      <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-border-subtle bg-surface-1/10">
-        <span className="text-[10px] font-bold tracking-widest text-text-muted font-display uppercase">
-          Sort
-        </span>
+      {/* 排序控件：去掉冗余的 SORT 文案，仅保留紧凑下拉 + 方向切换 */}
+      <div className="flex items-center justify-end px-3 pt-3 pb-2 border-b border-border-subtle bg-surface-1/10">
         <SortControl
           value={sortOption}
           onChange={onSortChange}

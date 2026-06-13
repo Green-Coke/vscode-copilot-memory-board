@@ -469,51 +469,62 @@ export class MemoryBoardWebviewCore {
 }
 
 /**
- * 侧边栏 Webview View 提供者。
+ * 多容器 Webview View 提供者。
  *
  * 继承自共享内核 {@link MemoryBoardWebviewCore}，在 `resolveWebviewView`
- * 被调用时复用 `attachWebview` 装配 GUI。Activity Bar 中的 Memory Board
- * 视图使用这个 provider，保持侧边栏体验。
+ * 被调用时复用 `attachWebview` 装配 GUI。该提供者可以同时处理多个物理视图 ID
+ * （如主侧栏、辅助侧栏和面板栏的 View），内部维护所有被解析的 View 映射以保证多端同步刷新。
  */
 export class MemoryBoardViewProvider extends MemoryBoardWebviewCore {
-  public static readonly viewType = "memoryBoard.mainView";
-
-  private view?: vscode.WebviewView;
+  // 保存所有已解析和激活的 WebviewView 实例映射，key 为其 viewType (即在 package.json 声明的 ID)
+  private views = new Map<string, vscode.WebviewView>();
 
   /**
-   * Called by VS Code when the webview view needs to be resolved.
+   * 当 Webview View 需要被解析时，由 VS Code 自动调用。
+   * @param webviewView 待装配的 webview 视图实例
    */
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken
   ): void {
-    this.view = webviewView;
+    const viewId = webviewView.viewType;
+    this.views.set(viewId, webviewView);
 
-    // 复用共享装配流程
+    // 复用共享的 HTML、CSP 与事件监听装配流程
     this.attachWebview(webviewView.webview);
 
-    // 监听侧边栏视图可见性变化
+    // 监听视图可见性变化
     webviewView.onDidChangeVisibility(() => {
       console.log(
-        `[Memory Board] View visibility changed: ${webviewView.visible}`
+        `[Memory Board] View ${viewId} visibility changed: ${webviewView.visible}`
       );
+    },
+    undefined,
+    this.context.subscriptions);
+
+    // 监听视图被销毁时的清理事件，在 Map 中移除对应实例引用
+    webviewView.onDidDispose(() => {
+      this.views.delete(viewId);
     },
     undefined,
     this.context.subscriptions);
   }
 
   /**
-   * 侧边栏刷新命令入口：刷新当前视图（若已解析）
+   * 刷新当前所有已激活的视图。若传入了特定 webview 则只刷新该实例。
+   * @param webview 可选的特定刷新目标 webview
    */
   public override async refresh(webview?: vscode.Webview): Promise<void> {
     if (webview) {
       await super.refresh(webview);
       return;
     }
-    if (this.view) {
-      await super.refresh(this.view.webview);
-    }
+    // 并发刷新所有正在活跃的 Webview 实例
+    const promises = Array.from(this.views.values()).map((v) =>
+      super.refresh(v.webview)
+    );
+    await Promise.all(promises);
   }
 }
 
@@ -574,15 +585,16 @@ export class MemoryBoardPanelManager extends MemoryBoardWebviewCore {
     panel.onDidDispose(
       () => {
         this.panel = undefined;
-        // 把 movedToPanel 置回 false，使侧边栏视图重新可见
+        // 把 activeLocation 置回 sidebar，并同步更新工作区持久状态，使侧边栏视图重新可见
         vscode.commands
-          .executeCommand("setContext", "memoryBoard.movedToPanel", false)
+          .executeCommand("setContext", "memoryBoard.activeLocation", "sidebar")
           .then(undefined, (err) =>
             console.warn(
               "[Memory Board] 恢复侧边栏视图的 setContext 调用失败:",
               err
             )
           );
+        void this.context.workspaceState.update("memoryBoard.activeLocation", "sidebar");
       },
       undefined,
       this.context.subscriptions
@@ -598,5 +610,24 @@ export class MemoryBoardPanelManager extends MemoryBoardWebviewCore {
     if (this.panel) {
       await super.refresh(this.panel.webview);
     }
+  }
+
+  /**
+   * 关闭当前面板（若已打开）。
+   * 用于"移动到主侧栏"命令：关闭后 onDidDispose 会自动恢复 memoryBoard.movedToPanel=false，
+   * 使侧边栏视图重新可见。调用方随后可执行 workbench.view.memory-board-sidebar 等命令聚焦侧边栏。
+   */
+  public close(): void {
+    if (this.panel) {
+      this.panel.dispose();
+      // dispose 会触发 onDidDispose，负责清理 panel 引用与 setContext
+    }
+  }
+
+  /**
+   * 当前是否有面板处于打开状态（用于命令的 enablement 判断）
+   */
+  public isOpen(): boolean {
+    return !!this.panel;
   }
 }
