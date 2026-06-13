@@ -28,6 +28,9 @@ importers:
 
   extensions/vscode:
     devDependencies:
+      '@memory-board/core':
+        specifier: workspace:*
+        version: link:../../core
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3

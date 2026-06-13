@@ -23,7 +23,7 @@
     "kanban",
     "long-term-memory"
   ],
-  "activationEvents": [],
+  "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -43,18 +43,47 @@
           "type": "webview"
         }
       ]
+    },
+    "commands": [
+      {
+        "command": "memoryBoard.refresh",
+        "title": "Memory Board: Refresh",
+        "category": "Memory Board",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "memoryBoard.openInPanel",
+        "title": "Memory Board: Open in Panel",
+        "category": "Memory Board",
+        "icon": "$(link-external)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "memoryBoard.openInPanel",
+          "when": "view == memoryBoard.mainView",
+          "group": "navigation"
+        },
+        {
+          "command": "memoryBoard.refresh",
+          "when": "view == memoryBoard.mainView",
+          "group": "navigation"
+        }
+      ]
     }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run build",
     "build": "node esbuild.config.mjs",
     "build:webview": "node -e \"const fs=require('fs'),p=require('path');const src=p.resolve('../../gui/dist');const dst=p.resolve('./resources/webview');fs.cpSync(src,dst,{recursive:true})\"",
-    "package": "npx @vscode/vsce package -o ../../.tmp/publish/vscode/memory-board.vsix",
+    "package": "npx @vscode/vsce package --no-dependencies -o ../../.tmp/publish/vscode/memory-board.vsix",
     "typecheck": "tsc --noEmit",
     "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('resources/webview',{recursive:true,force:true})\""
   },
   "dependencies": {},
   "devDependencies": {
+    "@memory-board/core": "workspace:*",
     "@types/node": "^25.9.3",
     "@types/vscode": "^1.96.0",
     "esbuild": "^0.25.0",

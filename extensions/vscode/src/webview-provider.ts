@@ -1,9 +1,11 @@
 // ============================================================================
-// MemoryBoardViewProvider — Webview Sidebar Provider
+// Memory Board — VS Code Webview 宿主层
 // ============================================================================
-// Implements vscode.WebviewViewProvider to render the GUI in VS Code's
-// sidebar. Acts as the "glue" layer: receives postMessage requests from
-// the GUI, routes them to @memory-board/core, and sends responses back.
+// 同时服务于两种入口：
+//   1) 侧边栏 WebviewView（通过 MemoryBoardViewProvider 由 Activity Bar 解析）
+//   2) 独立 WebviewPanel（通过 MemoryBoardPanelManager 以命令打开）
+// 两种入口共用同一套 GUI 资源装配、CSP、消息桥接与状态持久化逻辑，
+// 这些共享能力集中在 MemoryBoardWebviewCore 中实现，避免双入口行为漂移。
 // ============================================================================
 
 import * as vscode from "vscode";
@@ -34,18 +36,45 @@ const GLOBAL_UI_PREFERENCES_KEY = "memory-board.uiPreferences";
  */
 const WORKSPACE_STATE_KEY = "memory-board.workspaceState";
 
-export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "memoryBoard.mainView";
+/**
+ * 打包进扩展的 GUI 静态资源根目录（相对扩展根）
+ */
+const WEBVIEW_RESOURCE_ROOT = ["resources", "webview"];
 
-  private view?: vscode.WebviewView;
+/**
+ * 生成用于 CSP 的随机 nonce（每次装配 webview 时都会刷新）
+ */
+function getNonce(): string {
+  let text = "";
+  const possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
+
+/**
+ * 为 Webview View/Panel 装配 HTML、CSP、资源路径以及消息桥的共享内核。
+ *
+ * 设计要点：
+ * - 以 Vite 构建产物 `resources/webview/index.html` 作为单一事实来源，
+ *   不再在扩展侧手写一份平行 HTML 模板。这样 GUI 的脚本类型（module）、
+ *   资源文件名变化都会被自动反映，避免再次出现“脚本/CSP 与产物不一致”
+ *   导致前端挂不起来的情况（曾表现为只剩浅黄色背景）。
+ * - 自动把 HTML 中的相对资源引用改写为 `webview.asWebviewUri(...)` 形式，
+ *   并显式注入满足 module 脚本与内联样式的 CSP。
+ * - 侧边栏视图与独立面板复用同一个 attach 流程，保证两者行为一致。
+ */
+export class MemoryBoardWebviewCore {
   private readonly parser: MemoryParser;
 
   constructor(
-    private readonly extensionUri: vscode.Uri,
-    private readonly context: vscode.ExtensionContext
+    // 子类（ViewProvider / PanelManager）需要访问 context 订阅与 extensionUri 拼资源
+    protected readonly extensionUri: vscode.Uri,
+    protected readonly context: vscode.ExtensionContext
   ) {
-    // Initialize the core parser
-    // TODO: Determine the actual Copilot memory base path from research
+    // 初始化 core 解析器，用于扫描 Copilot 记忆目录
     this.parser = new MemoryParser(
       path.join(
         process.env["APPDATA"] ?? process.env["HOME"] ?? "",
@@ -56,53 +85,40 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-   * Called by VS Code when the webview view needs to be resolved.
+   * 把同一套 GUI 装配到任意 webview 实例上（供 view / panel 共用）
+   * 装配内容包括：本地资源授权、HTML、CSP、来自前端的 postMessage 监听
+   * @param webview 要装配的目标 webview（来自 view 或 panel）
    */
-  public resolveWebviewView(
-    webviewView: vscode.WebviewView,
-    _context: vscode.WebviewViewResolveContext,
-    _token: vscode.CancellationToken
-  ): void {
-    this.view = webviewView;
-
-    // Configure webview options
-    webviewView.webview.options = {
+  public attachWebview(webview: vscode.Webview): void {
+    // 授权加载打包在扩展内的 GUI 静态资源
+    webview.options = {
       enableScripts: true,
       localResourceRoots: [
-        // 允许加载打包在扩展内的 GUI 静态资源
-        vscode.Uri.joinPath(this.extensionUri, "resources", "webview"),
-        // 允许加载扩展自身资源
+        vscode.Uri.joinPath(this.extensionUri, ...WEBVIEW_RESOURCE_ROOT),
         vscode.Uri.joinPath(this.extensionUri, "resources"),
       ],
     };
 
-    // Set the HTML content
-    webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
+    // 装配页面内容（含资源改写与 CSP）
+    webview.html = this.getHtmlForWebview(webview);
 
-    // Listen for messages from the webview
-    webviewView.webview.onDidReceiveMessage(
-      (message: AnyRequest) => this.handleMessage(message),
+    // 监听来自前端的请求，统一路由到 core / 状态持久化
+    webview.onDidReceiveMessage(
+      (message: AnyRequest) => this.handleMessage(message, webview),
       undefined,
       this.context.subscriptions
     );
-
-    // Log when the view becomes visible or hidden
-    webviewView.onDidChangeVisibility(() => {
-      console.log(
-        `[Memory Board] View visibility changed: ${webviewView.visible}`
-      );
-    });
   }
 
   /**
-   * Force a refresh by re-fetching repos and pushing to GUI.
+   * 主动刷新：重新扫描仓库并推送给指定 webview
+   * 用于侧边栏刷新命令；面板入口可选调用
+   * @param webview 接收推送的目标 webview
    */
-  public async refresh(): Promise<void> {
-    if (!this.view) return;
-
+  public async refresh(webview: vscode.Webview): Promise<void> {
     try {
       const repos = await this.parser.scanRepositories();
-      this.view.webview.postMessage({
+      webview.postMessage({
         type: MessageTypes.ON_REPOS_CHANGED,
         requestId: "",
         payload: { repos },
@@ -117,9 +133,15 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
   // Message Router
   // ---------------------------------------------------------------------------
 
-  private async handleMessage(message: AnyRequest): Promise<void> {
-    if (!this.view) return;
-
+  /**
+   * 处理来自 webview 的单条请求；成功与失败都会回传一条响应
+   * @param message 前端发来的协议请求
+   * @param webview 响应需回传到的 webview 实例（避免多面板互相串扰）
+   */
+  private async handleMessage(
+    message: AnyRequest,
+    webview: vscode.Webview
+  ): Promise<void> {
     const msgType = message.type;
     const msgRequestId = message.requestId;
     console.log(`[Memory Board] Received message: ${msgType}`);
@@ -230,7 +252,7 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
       };
     }
 
-    this.view.webview.postMessage(response);
+    webview.postMessage(response);
   }
 
   // ---------------------------------------------------------------------------
@@ -310,36 +332,104 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
   }
 
   // ---------------------------------------------------------------------------
-  // HTML Generation
+  // HTML Generation（以 Vite dist/index.html 为单一事实来源）
   // ---------------------------------------------------------------------------
 
-  private getHtmlForWebview(webview: vscode.Webview): string {
-    // 解析打包在扩展内的 GUI 静态资源目录
-    const guiDistPath = vscode.Uri.joinPath(
+  /**
+   * 计算打包进扩展的 GUI 资源根目录的文件系统路径
+   */
+  private getGuiDistFsPath(): string {
+    return vscode.Uri.joinPath(
       this.extensionUri,
-      "resources",
-      "webview"
-    );
+      ...WEBVIEW_RESOURCE_ROOT
+    ).fsPath;
+  }
 
-    // Get URIs for the built JS and CSS assets
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(guiDistPath, "assets", "index.js")
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(guiDistPath, "assets", "index.css")
-    );
+  /**
+   * 为 webview 生成最终 HTML：
+   * - 先读取 Vite 构建产物 index.html 作为模板
+   * - 改写其中的相对资源引用为 webview 可访问的 URI
+   * - 注入满足 module 脚本和内联样式的 CSP、补齐 nonce
+   * - 如果资源缺失，返回友好的“GUI 未构建”兜底页
+   * @param webview 当前 webview 实例（用于 asWebviewUri 与 cspSource）
+   */
+  private getHtmlForWebview(webview: vscode.Webview): string {
+    const guiDistFsPath = this.getGuiDistFsPath();
+    const indexHtmlPath = path.join(guiDistFsPath, "index.html");
 
-    // Generate a nonce for Content Security Policy
-    const nonce = getNonce();
-
-    // Check if GUI has been built
-    const guiDistFsPath = guiDistPath.fsPath;
+    // 同时校验 index.html 与核心 JS 资源存在，避免落入半可用状态
     const guiBuilt =
-      fs.existsSync(guiDistFsPath) &&
+      fs.existsSync(indexHtmlPath) &&
       fs.existsSync(path.join(guiDistFsPath, "assets", "index.js"));
 
     if (!guiBuilt) {
-      return `<!DOCTYPE html>
+      return this.buildNotBuiltFallbackHtml();
+    }
+
+    // 读取 Vite 构建产物作为模板
+    let html = fs.readFileSync(indexHtmlPath, "utf8");
+
+    // 资源根的 webview 基础 URI，供相对路径拼接（dist/index.html 中均为 "./" 开头）
+    const webviewBase = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, ...WEBVIEW_RESOURCE_ROOT)
+    );
+    const nonce = getNonce();
+
+    // 1) 移除 Vite 产物里指向 Google Fonts 的外部 link（webview 离线/受 CSP 限制会失败）
+    html = html.replace(
+      /<link[^>]*href="https:\/\/fonts\.googleapis\.com[^>]*>/gi,
+      ""
+    );
+    html = html.replace(
+      /<link[^>]*href="https:\/\/fonts\.gstatic\.com[^>]*>/gi,
+      ""
+    );
+
+    // 2) 改写相对资源引用为 webview 可访问的绝对 URI
+    //   - href="./assets/xxx" / href="assets/xxx" / src="./assets/xxx"
+    html = html.replace(
+      /((?:href|src)\s*=\s*")\.?\/?((?:assets|mock-data)[^"]*)"/gi,
+      (_match, prefix, relPath) => `${prefix}${webviewBase}/${relPath}"`
+    );
+
+    // 3) 为脚本注入 nonce（Vite 产物本身不带 nonce；CSP 要求 script-src 用 nonce）
+    html = html.replace(
+      /<script(?![^>]*\snonce=)/gi,
+      `<script nonce="${nonce}"`
+    );
+
+    // 4) 注入 CSP：允许 module 脚本、webview 源样式与内联样式、图片（含 data）
+    //    注意：script-src 必须允许 'nonce-xxx' 才能执行带 nonce 的 module 脚本
+    const csp = [
+      "default-src 'none'",
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
+      `script-src 'nonce-${nonce}'`,
+      `font-src ${webview.cspSource}`,
+      `img-src ${webview.cspSource} https: data:`,
+      `connect-src ${webview.cspSource}`,
+    ].join("; ");
+
+    // 如果模板已含 CSP meta（后续手动构建场景），替换；否则在 <head> 插入
+    if (/<meta[^>]+http-equiv="Content-Security-Policy"/i.test(html)) {
+      html = html.replace(
+        /<meta[^>]+http-equiv="Content-Security-Policy"[^>]*>/i,
+        `<meta http-equiv="Content-Security-Policy" content="${csp}">`
+      );
+    } else {
+      html = html.replace(
+        /<head[^>]*>/i,
+        (match) => `${match}\n  <meta http-equiv="Content-Security-Policy" content="${csp}">`
+      );
+    }
+
+    return html;
+  }
+
+  /**
+   * 当 GUI 资源未构建时显示的兜底页
+   */
+  private buildNotBuiltFallbackHtml(): string {
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -375,40 +465,118 @@ export class MemoryBoardViewProvider implements vscode.WebviewViewProvider {
   <p><code>pnpm --filter @memory-board/gui build</code></p>
 </body>
 </html>`;
-    }
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none';
-      style-src ${webview.cspSource} 'unsafe-inline';
-      script-src 'nonce-${nonce}';
-      font-src ${webview.cspSource};
-      img-src ${webview.cspSource} https: data:;">
-  <link rel="stylesheet" href="${styleUri}">
-  <title>Memory Board</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Utility
-// ---------------------------------------------------------------------------
+/**
+ * 侧边栏 Webview View 提供者。
+ *
+ * 继承自共享内核 {@link MemoryBoardWebviewCore}，在 `resolveWebviewView`
+ * 被调用时复用 `attachWebview` 装配 GUI。Activity Bar 中的 Memory Board
+ * 视图使用这个 provider，保持侧边栏体验。
+ */
+export class MemoryBoardViewProvider extends MemoryBoardWebviewCore {
+  public static readonly viewType = "memoryBoard.mainView";
 
-function getNonce(): string {
-  let text = "";
-  const possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  private view?: vscode.WebviewView;
+
+  /**
+   * Called by VS Code when the webview view needs to be resolved.
+   */
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ): void {
+    this.view = webviewView;
+
+    // 复用共享装配流程
+    this.attachWebview(webviewView.webview);
+
+    // 监听侧边栏视图可见性变化
+    webviewView.onDidChangeVisibility(() => {
+      console.log(
+        `[Memory Board] View visibility changed: ${webviewView.visible}`
+      );
+    },
+    undefined,
+    this.context.subscriptions);
   }
-  return text;
+
+  /**
+   * 侧边栏刷新命令入口：刷新当前视图（若已解析）
+   */
+  public override async refresh(webview?: vscode.Webview): Promise<void> {
+    if (webview) {
+      await super.refresh(webview);
+      return;
+    }
+    if (this.view) {
+      await super.refresh(this.view.webview);
+    }
+  }
+}
+
+/**
+ * 独立 WebviewPanel 管理者。
+ *
+ * 通过命令 `memoryBoard.openInPanel` 调用 {@link open}，在编辑器区域
+ * 打开一个独立的 WebviewPanel。这种形态天然可以作为标签页移动、拆分、
+ * 拖拽到编辑器组的任意位置，满足“像其他扩展一样可移动”的需求。
+ * 当前实现采用单实例策略：再次调用命令会复用已存在的 panel。
+ */
+export class MemoryBoardPanelManager extends MemoryBoardWebviewCore {
+  public static readonly viewType = "memoryBoard.panelView";
+
+  private panel?: vscode.WebviewPanel;
+
+  constructor(extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
+    super(extensionUri, context);
+  }
+
+  /**
+   * 打开（或聚焦）独立的 Memory Board 面板
+   * 已存在则直接 reveal；不存在则新建并装配 GUI
+   */
+  public open(): void {
+    // 单实例复用：已存在时直接聚焦，避免多窗口同时写 workspaceState 状态歧义
+    if (this.panel) {
+      this.panel.reveal(vscode.ViewColumn.Active, false);
+      return;
+    }
+
+    // 新建独立面板，作为编辑器标签页呈现（可移动/拆分/重排）
+    const panel = vscode.window.createWebviewPanel(
+      MemoryBoardPanelManager.viewType,
+      "Memory Board",
+      vscode.ViewColumn.Active,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode.Uri.joinPath(this.extensionUri, ...WEBVIEW_RESOURCE_ROOT),
+          vscode.Uri.joinPath(this.extensionUri, "resources"),
+        ],
+      }
+    );
+    panel.iconPath = vscode.Uri.joinPath(
+      this.extensionUri,
+      "resources",
+      "icon.svg"
+    );
+
+    this.panel = panel;
+
+    // 复用共享装配流程
+    this.attachWebview(panel.webview);
+
+    // 面板关闭时清理引用，允许下次重新打开
+    panel.onDidDispose(
+      () => {
+        this.panel = undefined;
+      },
+      undefined,
+      this.context.subscriptions
+    );
+  }
 }
