@@ -1,0 +1,25 @@
+{
+  "name": "@memory-board/core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Core logic for scanning, parsing, and mapping Copilot long-term memory files.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

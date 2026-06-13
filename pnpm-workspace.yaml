@@ -1,0 +1,7 @@
+packages:
+  - "core"
+  - "gui"
+  - "extensions/*"
+allowBuilds:
+  '@swc/core': true
+  esbuild: true

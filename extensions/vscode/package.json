@@ -1,0 +1,64 @@
+{
+  "name": "vscode-copilot-memory-board",
+  "displayName": "Copilot Memory Board",
+  "description": "Visualize and manage GitHub Copilot's long-term memory as an interactive board in VS Code.",
+  "version": "0.0.1",
+  "publisher": "memory-board",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/memory-board/vscode-copilot-memory-board"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "copilot",
+    "memory",
+    "board",
+    "kanban",
+    "long-term-memory"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "memory-board-sidebar",
+          "title": "Memory Board",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "memory-board-sidebar": [
+        {
+          "id": "memoryBoard.mainView",
+          "name": "Memory Board",
+          "type": "webview"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p ./tsconfig.json",
+    "dev": "tsc -p ./tsconfig.json --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true})\"",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@memory-board/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/vscode": "^1.96.0",
+    "typescript": "^5.8.3"
+  }
+}

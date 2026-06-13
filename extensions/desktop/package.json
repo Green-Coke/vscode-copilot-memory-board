@@ -1,0 +1,6 @@
+{
+  "name": "@memory-board/desktop",
+  "version": "0.0.1",
+  "private": true,
+  "description": "(Future) Standalone desktop application shell for the Memory Board."
+}

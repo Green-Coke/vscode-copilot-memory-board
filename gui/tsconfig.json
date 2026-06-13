@@ -1,0 +1,20 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": [],
+    "noUnusedLocals": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite-env.d.ts"],
+  "exclude": ["node_modules", "dist"],
+  "references": [
+    { "path": "../core" }
+  ]
+}

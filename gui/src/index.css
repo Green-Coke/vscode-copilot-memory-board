@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   Memory Board — Design System Tokens
+   ============================================================================ */
+
+@theme {
+  /* Brand Colors — Indigo / Violet gradient palette */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  /* Surface Colors — Dark Mode First */
+  --color-surface-0: #0a0a0f;
+  --color-surface-1: #12121a;
+  --color-surface-2: #1a1a25;
+  --color-surface-3: #222230;
+  --color-surface-4: #2a2a3a;
+
+  /* Text Colors */
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #a0a0b5;
+  --color-text-muted: #606075;
+
+  /* Border Colors */
+  --color-border-default: #2a2a3a;
+  --color-border-subtle: #1e1e2e;
+
+  /* Category Badge Colors */
+  --color-category-preference: #f59e0b;
+  --color-category-context: #3b82f6;
+  --color-category-instruction: #ef4444;
+  --color-category-knowledge: #10b981;
+  --color-category-pattern: #8b5cf6;
+  --color-category-unknown: #6b7280;
+
+  /* Animation Timing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background-color: var(--color-surface-0);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* ============================================================================
+   Scrollbar Customization
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-4);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-500);
+}
+
+/* ============================================================================
+   Category Badge Utilities
+   ============================================================================ */
+
+.badge-preference {
+  background-color: color-mix(in srgb, var(--color-category-preference) 15%, transparent);
+  color: var(--color-category-preference);
+}
+
+.badge-context {
+  background-color: color-mix(in srgb, var(--color-category-context) 15%, transparent);
+  color: var(--color-category-context);
+}
+
+.badge-instruction {
+  background-color: color-mix(in srgb, var(--color-category-instruction) 15%, transparent);
+  color: var(--color-category-instruction);
+}
+
+.badge-knowledge {
+  background-color: color-mix(in srgb, var(--color-category-knowledge) 15%, transparent);
+  color: var(--color-category-knowledge);
+}
+
+.badge-pattern {
+  background-color: color-mix(in srgb, var(--color-category-pattern) 15%, transparent);
+  color: var(--color-category-pattern);
+}
+
+.badge-unknown {
+  background-color: color-mix(in srgb, var(--color-category-unknown) 15%, transparent);
+  color: var(--color-category-unknown);
+}
+
+/* ============================================================================
+   Glassmorphism Panel
+   ============================================================================ */
+
+.glass-panel {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface-2) 80%, transparent),
+    color-mix(in srgb, var(--color-surface-1) 60%, transparent)
+  );
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border-default);
+  border-radius: 12px;
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px color-mix(in srgb, var(--color-brand-500) 20%, transparent);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s var(--ease-out-expo) both;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s var(--ease-out-expo) both;
+}
