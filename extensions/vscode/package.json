@@ -1,9 +1,10 @@
 {
   "name": "vscode-copilot-memory-board",
   "displayName": "Copilot Memory Board",
-  "description": "Visualize and manage GitHub Copilot's long-term memory as an interactive board in VS Code.",
-  "version": "0.0.1",
+  "description": "在 VS Code 中以交互式看板的方式，可视化和管理 GitHub Copilot 的记忆。",
+  "version": "0.0.2",
   "publisher": "Green-Coke",
+  "icon": "resources/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -13,6 +14,7 @@
     "vscode": "^1.96.0"
   },
   "categories": [
+    "AI",
     "Visualization",
     "Other"
   ],
@@ -21,7 +23,13 @@
     "memory",
     "board",
     "kanban",
-    "long-term-memory"
+    "long-term-memory",
+    "github-copilot",
+    "ai-memory",
+    "chat-history",
+    "memory-management",
+    "developer-tools",
+    "productivity"
   ],
   "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.js",
