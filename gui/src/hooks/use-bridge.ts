@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type {
-  Repository,
+  Workspace,
   Session,
   MemoryEntry,
   AnyPushMessage,
@@ -65,20 +65,20 @@ function useAsyncData<T>(
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch the list of repositories.
- * Automatically refreshes when the host pushes `onReposChanged`.
+ *Fetch the list of workspaces.
+ * Automatically refreshes when the host pushes `onWorkspacesChanged`.
  */
-export function useRepos(): AsyncState<Repository[]> {
-  const state = useAsyncData<Repository[]>(async () => {
-    const response = await sendRequest("getRepos", {});
+export function useWorkspaces(): AsyncState<Workspace[]> {
+  const state = useAsyncData<Workspace[]>(async () => {
+    const response = await sendRequest("getWorkspaces", {});
     if (response.error) throw new Error(response.error);
-    return (response.payload as { repos: Repository[] }).repos;
+    return (response.payload as { workspaces: Workspace[] }).workspaces;
   }, []);
 
   // Listen for push updates
   useEffect(() => {
     const unsub = onPushMessage((msg: AnyPushMessage) => {
-      if (msg.type === "onReposChanged") {
+      if (msg.type === "onWorkspacesChanged") {
         state.refetch();
       }
     });
@@ -89,17 +89,19 @@ export function useRepos(): AsyncState<Repository[]> {
 }
 
 /**
- * Fetch sessions for a specific repository.
+ * Fetch sessions for a specific workspace.
  *
- * @param repoId - The repository ID to fetch sessions for, or null to skip.
+ * @param workspaceId - The workspace ID to fetch sessions for, or null to skip.
  */
-export function useSessions(repoId: string | null): AsyncState<Session[]> {
+export function useSessionsByWorkspace(
+  workspaceId: string | null
+): AsyncState<Session[]> {
   return useAsyncData<Session[]>(async () => {
-    if (!repoId) return [];
-    const response = await sendRequest("getSessionsByRepo", { repoId });
+    if (!workspaceId) return [];
+    const response = await sendRequest("getSessionsByWorkspace", { workspaceId });
     if (response.error) throw new Error(response.error);
     return (response.payload as { sessions: Session[] }).sessions;
-  }, [repoId]);
+  }, [workspaceId]);
 }
 
 /**
@@ -246,11 +248,11 @@ export function useWorkspaceState(): WorkspaceStateHook {
  */
 function cloneDefaultWorkspace(): WorkspaceState {
   return {
-    repoSort: { ...DEFAULT_WORKSPACE_STATE.repoSort },
+    workspaceSort: { ...DEFAULT_WORKSPACE_STATE.workspaceSort },
     sessionSort: { ...DEFAULT_WORKSPACE_STATE.sessionSort },
     fileTreeSort: { ...DEFAULT_WORKSPACE_STATE.fileTreeSort },
     previewVisible: DEFAULT_WORKSPACE_STATE.previewVisible,
-    pinnedRepoIds: [...DEFAULT_WORKSPACE_STATE.pinnedRepoIds],
+    pinnedWorkspaceIds: [...DEFAULT_WORKSPACE_STATE.pinnedWorkspaceIds],
     pinnedSessionIds: [...DEFAULT_WORKSPACE_STATE.pinnedSessionIds],
   };
 }
@@ -263,11 +265,11 @@ function mergeWorkspace(
   patch: Partial<WorkspaceState>
 ): WorkspaceState {
   return {
-    repoSort: patch.repoSort ?? base.repoSort,
+    workspaceSort: patch.workspaceSort ?? base.workspaceSort,
     sessionSort: patch.sessionSort ?? base.sessionSort,
     fileTreeSort: patch.fileTreeSort ?? base.fileTreeSort,
     previewVisible: patch.previewVisible ?? base.previewVisible,
-    pinnedRepoIds: patch.pinnedRepoIds ?? base.pinnedRepoIds,
+    pinnedWorkspaceIds: patch.pinnedWorkspaceIds ?? base.pinnedWorkspaceIds,
     pinnedSessionIds: patch.pinnedSessionIds ?? base.pinnedSessionIds,
   };
 }

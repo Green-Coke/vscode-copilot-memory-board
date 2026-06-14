@@ -9,7 +9,7 @@ import { Search, X, MessageSquare, Terminal, Eye, EyeOff } from "lucide-react";
 import { FileTree } from "@/components/FileTree";
 import { FilePreview } from "@/components/FilePreview";
 import { SortControl } from "@/components/SortControl";
-import { getMockFileTree, getMockRepoFileTree, type MockFsNode } from "@/lib/mock-filetree";
+import { getMockFileTree, getMockWorkspaceFileTree, type MockFsNode } from "@/lib/mock-filetree";
 import { sortFileTree } from "@/lib/sort-utils";
 import { getBridgeEnvironment, sendRequest } from "@/lib/bridge";
 
@@ -25,12 +25,12 @@ interface MemoryViewerProps {
   sessionTitle?: string;
   /** 当前选中的会话 ID，用于加载 mock 文件树 */
   sessionId?: string;
-  /** 仓库级目录视图信号：传入 repoId 时切换为仓库骨架文件树 */
-  repoId?: string;
-  /** 仓库名称，用于 repo 模式下的标题展示 */
-  repoName?: string;
-  /** 当前视图模式：session（默认）展示会话相关文件，repo 展示整仓目录 */
-  viewMode?: "session" | "repo";
+  /** 工作区级目录视图信号：传入 workspaceId 时切换为工作区骨架文件树 */
+  workspaceId?: string;
+  /** 工作区名称，用于 workspace 模式下的标题展示 */
+  workspaceName?: string;
+  /** 当前视图模式：session（默认）展示会话相关文件，workspace 展示工作区目录 */
+  viewMode?: "session" | "workspace";
   /** 是否启用文件预览能力（受控，工作区偏好） */
   previewEnabled: boolean;
   /** 预览总开关变化回调 */
@@ -79,8 +79,8 @@ export function MemoryViewer({
   loading,
   sessionTitle,
   sessionId,
-  repoId,
-  repoName,
+  workspaceId,
+  workspaceName,
   viewMode = "session",
   previewEnabled,
   onPreviewEnabledChange,
@@ -95,7 +95,7 @@ export function MemoryViewer({
   const [fileTree, setFileTree] = useState<MockFsNode[]>([]);
 
   // 根据视图模式选择 mock 文件树数据源：
-  // - repo 模式：加载整个仓库的骨架目录，默认预览 README.md
+  // - workspace 模式：加载整个工作区的骨架目录，默认预览 README.md
   // - session 模式：加载该会话涉及的文件子集，默认预览首个文本文件
   useEffect(() => {
     // 深度优先搜索（DFS）寻找文件树中第一个文本文件
@@ -128,8 +128,8 @@ export function MemoryViewer({
 
     const isVsCode = getBridgeEnvironment() === "vscode";
 
-    if (viewMode === "repo" && repoId) {
-      const tree = getMockRepoFileTree(repoId);
+    if (viewMode === "workspace" && workspaceId) {
+      const tree = getMockWorkspaceFileTree(workspaceId);
       setFileTree(tree);
       setSearchQuery("");
       // 处理目录节点或预览被关掉时，不需要默认选中文件。VS Code 模式下不在此加载默认文件。
@@ -149,7 +149,7 @@ export function MemoryViewer({
       setFileTree([]);
       setSelectedNode(null);
     }
-  }, [viewMode, repoId, sessionId, previewEnabled, previewVisible]);
+  }, [viewMode, workspaceId, sessionId, previewEnabled, previewVisible]);
 
   // 根据搜索关键字过滤后再按 fileTreeSort 递归排序
   const processedTree = useMemo(() => {
@@ -253,8 +253,8 @@ export function MemoryViewer({
               {sessionTitle}
             </h3>
             <p className="text-[10px] font-mono text-text-secondary mt-0.5">
-              {viewMode === "repo"
-                ? `Repository Explorer${repoName ? ` · ${repoName}` : ""}`
+              {viewMode === "workspace"
+                ? `工作区浏览器${workspaceName ? ` · ${workspaceName}` : ""}`
                 : "Explorer Mode (Standalone Mock FS)"}
             </p>
           </div>

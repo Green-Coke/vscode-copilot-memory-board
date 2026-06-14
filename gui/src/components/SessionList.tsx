@@ -15,11 +15,12 @@ interface SessionListProps {
   selectedId: string | null;
   onSelect: (session: Session) => void;
   loading?: boolean;
-  repoName?: string;
-  /** 当前右侧是否处于 "仓库级目录" 视图（高亮入口用） */
-  viewingRepoFiles?: boolean;
-  /** 点击仓库级目录入口时的回调 */
-  onSelectRepoFiles?: () => void;
+  /** 当前选中的工作区名称（用于空态判断） */
+  workspaceName?: string;
+  /** 当前右侧是否处于 "工作区级目录" 视图（高亮入口用） */
+  viewingWorkspaceFiles?: boolean;
+  /** 点击工作区级目录入口时的回调 */
+  onSelectWorkspaceFiles?: () => void;
   /** session 列表排序选项（受控） */
   sortOption: SortOption;
   /** 排序变化回调（受控） */
@@ -35,9 +36,9 @@ export function SessionList({
   selectedId,
   onSelect,
   loading,
-  repoName,
-  viewingRepoFiles,
-  onSelectRepoFiles,
+  workspaceName,
+  viewingWorkspaceFiles,
+  onSelectWorkspaceFiles,
   sortOption,
   onSortChange,
   pinnedIds,
@@ -94,9 +95,9 @@ export function SessionList({
   }
 
   // ---------------------------------------------------------------------------
-  // Render Empty State (No Repo Selected)
+  // Render Empty State (No Workspace Selected)
   // ---------------------------------------------------------------------------
-  if (!repoName) {
+  if (!workspaceName) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
         <div className="relative w-16 h-16 mb-4 flex items-center justify-center">
@@ -108,17 +109,17 @@ export function SessionList({
           <MessageSquare className="absolute w-5 h-5 text-text-muted/60 animate-bounce" />
         </div>
         <h3 className="text-xs font-bold tracking-wider text-text-secondary uppercase font-display">
-          Awaiting Repository
+          等待工作区选择
         </h3>
         <p className="text-[11px] text-text-muted mt-1 max-w-[180px] leading-relaxed">
-          Select a repository from the left panel to scan its memory sessions.
+          请从左侧面板选择一个工作区以扫描其会话记忆。
         </p>
       </div>
     );
   }
 
   // ---------------------------------------------------------------------------
-  // Render Empty State (No Sessions in selected Repo)
+  // Render Empty State (No Sessions in selected Workspace)
   // ---------------------------------------------------------------------------
   if (sessions.length === 0) {
     return (
@@ -132,10 +133,10 @@ export function SessionList({
           <MessageSquare className="absolute w-4 h-4 text-accent-cyan" />
         </div>
         <h3 className="text-xs font-bold tracking-wider text-text-primary uppercase font-display">
-          No Sessions Found
+          未找到会话
         </h3>
         <p className="text-[11px] text-text-secondary mt-1.5 max-w-[200px] leading-relaxed">
-          No active Copilot chat memory timelines found inside <span className="text-brand-indigo font-semibold">{repoName}</span>.
+          在 <span className="text-brand-indigo font-semibold">{workspaceName}</span> 中未发现可用的 Copilot Chat 记忆时间线。
         </p>
       </div>
     );
@@ -175,27 +176,27 @@ export function SessionList({
         </div>
       </div>
 
-      {/* 仓库级目录独立分区：点击后右侧展示整个仓库的骨架目录，与会话列表视觉分隔 */}
-      {onSelectRepoFiles && (
+      {/* 工作区级目录独立分区：点击后右侧展示整个工作区的骨架目录，与会话列表视觉分隔 */}
+      {onSelectWorkspaceFiles && (
         <div className="px-2.5 pt-2.5">
           <button
-            onClick={onSelectRepoFiles}
+            onClick={onSelectWorkspaceFiles}
             className={cn(
               "group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left select-none outline-none cursor-pointer",
               "transition-all duration-300 ease-out border",
-              viewingRepoFiles
+              viewingWorkspaceFiles
                 ? "bg-selected-bg border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
                 : "border-transparent hover:bg-surface-3/50 hover:border-border-default text-text-primary"
             )}
-            title="查看该仓库的记忆文件目录"
+            title="查看该工作区的记忆文件目录"
           >
-            {viewingRepoFiles && (
+            {viewingWorkspaceFiles && (
               <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
             )}
             <div
               className={cn(
                 "flex items-center justify-center w-8.5 h-8.5 rounded-lg border shrink-0 transition-all duration-300",
-                viewingRepoFiles
+                viewingWorkspaceFiles
                   ? "bg-selected-bg-strong border-selected-border text-selected-text"
                   : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
               )}
@@ -204,17 +205,17 @@ export function SessionList({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold font-display truncate tracking-wide">
-                仓库级目录
+                工作区级目录
               </p>
               <p className="text-[9px] font-mono text-text-secondary mt-0.5 truncate">
-                点击查看该仓库的记忆文件目录
+                点击查看该工作区的记忆文件目录
               </p>
             </div>
             <ChevronRight
               className={cn(
                 "w-3.5 h-3.5 text-text-muted transition-all duration-300",
                 "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
-                viewingRepoFiles && "opacity-100 translate-x-0 text-selected-text"
+                viewingWorkspaceFiles && "opacity-100 translate-x-0 text-selected-text"
               )}
             />
           </button>

@@ -22,6 +22,7 @@ import type {
   OpenFileRequest,
   ResponseMessage,
   UiPreferences,
+  Workspace,
   WorkspaceState,
 } from "@memory-board/core";
 
@@ -68,21 +69,92 @@ function getNonce(): string {
  * - 侧边栏视图与独立面板复用同一个 attach 流程，保证两者行为一致。
  */
 export class MemoryBoardWebviewCore {
-  private readonly parser: MemoryParser;
+  /**
+   * 供 webview / panel 共用的 memory 解析器实例。
+   * 通过 initParser() 延迟初始化，依赖 context.storageUri 反推 workspaceStorage 根路径。
+   */
+  private parser: MemoryParser | undefined;
+
+  /**
+   * 当前激活 workspaceId（从 storageUri 反推；不可用时为 undefined）。
+   * 用于仅扫描本地工作区时限定。
+   */
+  private readonly currentWorkspaceId: string | undefined;
+
+  /**
+   * workspaceStorage 根目录的绝对路径。
+   * 形如 Windows: C:/Users/xxx/AppData/Roaming/Code/User/workspaceStorage
+   *       Insiders:  C:/Users/xxx/AppData/Roaming/Code - Insiders/User/workspaceStorage
+   */
+  private readonly workspaceStoragePath: string | undefined;
+
+  /**
+   * 多 workspace 缓存：启动时初始化 + 用户点击刷新时更新。
+   * 避免每次 webview 渲染都重新遍历全部 workspaceStorage 目录。
+   */
+  private workspacesCache: Workspace[] | undefined;
 
   constructor(
     // 子类（ViewProvider / PanelManager）需要访问 context 订阅与 extensionUri 拼资源
     protected readonly extensionUri: vscode.Uri,
     protected readonly context: vscode.ExtensionContext
   ) {
-    // 初始化 core 解析器，用于扫描 Copilot 记忆目录
-    this.parser = new MemoryParser(
-      path.join(
-        process.env["APPDATA"] ?? process.env["HOME"] ?? "",
-        "GitHub Copilot",
-        "memory"
-      )
-    );
+    // 从 context.storageUri 反推 workspaceStorage 根路径
+    // storageUri 形如 "…/workspaceStorage/<workspaceId>/<extensionId>"
+    const resolved = this.resolveWorkspaceStoragePath();
+    this.workspaceStoragePath = resolved?.workspaceStoragePath;
+    this.currentWorkspaceId = resolved?.workspaceId;
+
+    if (this.workspaceStoragePath && this.currentWorkspaceId) {
+      // 优先读 dev/test 环境变量覆盖（e2e 注入 tmpdir mock 时使用）
+      const override = process.env["MEMORY_BOARD_WS_STORAGE_OVERRIDE"];
+      const basePath = (override && override.trim().length > 0) ? override : this.workspaceStoragePath;
+      this.parser = new MemoryParser({
+        basePath,
+        currentWorkspaceId: this.currentWorkspaceId,
+      });
+      console.log(
+        `[Memory Board] MemoryParser initialized: workspaceId=${this.currentWorkspaceId}, basePath=${basePath}`,
+      );
+    } else {
+      console.warn(
+        "[Memory Board] context.storageUri unavailable; memory scanning disabled until next refresh.",
+      );
+    }
+  }
+
+  /**
+   * 从 context.storageUri 反推 workspaceStorage 根路径与当前 workspaceId。
+   *
+   * storageUri 标准结构：
+   *   <workspaceStorageHome>/<workspaceId>/<extensionId>
+   * 例如：
+   *   C:/Users/25388/AppData/Roaming/Code/User/workspaceStorage/<hex32>/memory-board.memory-board
+   *
+   * 向上 2 级获得 workspaceStorageHome；倒数第 2 级是 workspaceId。
+   *
+   * 本方法同时与 vscode.env.uriScheme 做兼容校验：
+   * 正式版 uriScheme="code"、Insiders="code-insiders"。
+   * 若 storageUri 不可用（例如扩展被未在 workspace 中激活）则返回 undefined。
+   */
+  private resolveWorkspaceStoragePath():
+    | { workspaceStoragePath: string; workspaceId: string }
+    | undefined {
+    const storageUri = this.context.storageUri ?? this.context.globalStorageUri;
+    if (!storageUri) {
+      return undefined;
+    }
+    // fsPath 形如 "\\workspaceStorage\\<id>\\<extId>"；按 sep 拆开后从尾部回搾
+    const parts = storageUri.fsPath.split(path.sep).filter((p) => p.length > 0);
+    // 保证至少有 "…/workspaceStorage/<id>/<extId>" 三级
+    const wsIdx = parts.findIndex((p) => p.toLowerCase() === "workspacestorage");
+    if (wsIdx < 0 || wsIdx + 2 >= parts.length) {
+      return undefined;
+    }
+    const workspaceId = parts[wsIdx + 1];
+    const workspaceStoragePath = parts.slice(0, wsIdx + 1).join(path.sep);
+    // Insiders / stable 的路径中“Code - Insiders” 与 "Code" 差异已被 storageUri 本身反映，无需重复处理
+    return { workspaceStoragePath, workspaceId };
   }
 
   /**
@@ -112,22 +184,42 @@ export class MemoryBoardWebviewCore {
   }
 
   /**
-   * 主动刷新：重新扫描仓库并推送给指定 webview
+   * 主动刷新：重新扫描工作区并推送给指定 webview
    * 用于侧边栏刷新命令；面板入口可选调用
    * @param webview 接收推送的目标 webview
    */
   public async refresh(webview: vscode.Webview): Promise<void> {
     try {
-      const repos = await this.parser.scanRepositories();
+      this.workspacesCache = undefined; // 强制刷新
+      const workspaces = await this.scanWorkspacesCached();
       webview.postMessage({
-        type: MessageTypes.ON_REPOS_CHANGED,
+        type: MessageTypes.ON_WORKSPACES_CHANGED,
         requestId: "",
-        payload: { repos },
+        payload: { workspaces },
         error: null,
       });
     } catch (err) {
       console.error("[Memory Board] Refresh failed:", err);
     }
+  }
+
+  /**
+   * 优先返回缓存；缓存未命中时根据 currentWorkspaceId 智能选择扫描范围：
+   * - 仅有 currentWorkspaceId 时只扫当前工作区（较快）
+   * - 用户主动请求全扫时调用 scanAllWorkspaces 并写入缓存
+   */
+  private async scanWorkspacesCached(forceAll = false): Promise<Workspace[]> {
+    if (!this.parser) {
+      return [];
+    }
+    if (this.workspacesCache && !forceAll) {
+      return this.workspacesCache;
+    }
+    const workspaces = forceAll
+      ? await this.parser.scanWorkspaces()
+      : await this.parser.scanCurrentWorkspace();
+    this.workspacesCache = workspaces;
+    return workspaces;
   }
 
   // ---------------------------------------------------------------------------
@@ -151,20 +243,22 @@ export class MemoryBoardWebviewCore {
 
     try {
       switch (message.type) {
-        case MessageTypes.GET_REPOS: {
-          const repos = await this.parser.scanRepositories();
+        case MessageTypes.GET_WORKSPACES: {
+          const workspaces = await this.scanWorkspacesCached();
           response = {
             type: message.type,
             requestId: message.requestId,
-            payload: { repos },
+            payload: { workspaces },
             error: null,
           };
           break;
         }
 
-        case MessageTypes.GET_SESSIONS_BY_REPO: {
-          const { repoId } = message.payload as { repoId: string };
-          const sessions = await this.parser.getSessionsByRepo(repoId);
+        case MessageTypes.GET_SESSIONS_BY_WORKSPACE: {
+          const { workspaceId } = message.payload as { workspaceId: string };
+          const sessions = this.parser
+            ? await this.parser.getSessionsByWorkspace(workspaceId)
+            : [];
           response = {
             type: message.type,
             requestId: message.requestId,
@@ -176,7 +270,14 @@ export class MemoryBoardWebviewCore {
 
         case MessageTypes.READ_MEMORY_CONTENT: {
           const { sessionId } = message.payload as { sessionId: string };
-          const entries = await this.parser.readMemoryContent(sessionId);
+          // 从工作区状态或最新上下文传递时，需要 workspaceId 才能定位 repo特殊 session
+          // 默认使用 currentWorkspaceId（这是 99% 的场景）
+          const workspaceId =
+            (message.payload as { workspaceId?: string }).workspaceId ??
+            this.currentWorkspaceId;
+          const entries = this.parser
+            ? await this.parser.readMemoryContent(sessionId, workspaceId)
+            : [];
           response = {
             type: message.type,
             requestId: message.requestId,
@@ -319,11 +420,11 @@ export class MemoryBoardWebviewCore {
    */
   private cloneDefaultWorkspaceState(): WorkspaceState {
     return {
-      repoSort: { ...DEFAULT_WORKSPACE_STATE.repoSort },
+      workspaceSort: { ...DEFAULT_WORKSPACE_STATE.workspaceSort },
       sessionSort: { ...DEFAULT_WORKSPACE_STATE.sessionSort },
       fileTreeSort: { ...DEFAULT_WORKSPACE_STATE.fileTreeSort },
       previewVisible: DEFAULT_WORKSPACE_STATE.previewVisible,
-      pinnedRepoIds: [...DEFAULT_WORKSPACE_STATE.pinnedRepoIds],
+      pinnedWorkspaceIds: [...DEFAULT_WORKSPACE_STATE.pinnedWorkspaceIds],
       pinnedSessionIds: [...DEFAULT_WORKSPACE_STATE.pinnedSessionIds],
     };
   }
@@ -336,11 +437,11 @@ export class MemoryBoardWebviewCore {
     patch: Partial<WorkspaceState>
   ): WorkspaceState {
     return {
-      repoSort: patch.repoSort ?? base.repoSort,
+      workspaceSort: patch.workspaceSort ?? base.workspaceSort,
       sessionSort: patch.sessionSort ?? base.sessionSort,
       fileTreeSort: patch.fileTreeSort ?? base.fileTreeSort,
       previewVisible: patch.previewVisible ?? base.previewVisible,
-      pinnedRepoIds: patch.pinnedRepoIds ?? base.pinnedRepoIds,
+      pinnedWorkspaceIds: patch.pinnedWorkspaceIds ?? base.pinnedWorkspaceIds,
       pinnedSessionIds: patch.pinnedSessionIds ?? base.pinnedSessionIds,
     };
   }

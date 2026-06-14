@@ -6,7 +6,7 @@
 // Must stay in sync with docs/protocol.md.
 // ============================================================================
 
-import type { MemoryEntry, Repository, Session, UiPreferences, WorkspaceState } from "./types.js";
+import type { MemoryEntry, Session, UiPreferences, Workspace, WorkspaceState } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Envelope Types
@@ -46,17 +46,17 @@ export interface ResponseMessage<T = Record<string, unknown>>
 // Request Payloads (GUI → Host)
 // ---------------------------------------------------------------------------
 
-export interface GetReposRequest {
-  type: "getRepos";
+export interface GetWorkspacesRequest {
+  type: "getWorkspaces";
   requestId: string;
   payload: Record<string, never>;
 }
 
-export interface GetSessionsByRepoRequest {
-  type: "getSessionsByRepo";
+export interface GetSessionsByWorkspaceRequest {
+  type: "getSessionsByWorkspace";
   requestId: string;
   payload: {
-    repoId: string;
+    workspaceId: string;
   };
 }
 
@@ -131,8 +131,8 @@ export interface OpenFileRequest {
  * Union of all possible request message types.
  */
 export type AnyRequest =
-  | GetReposRequest
-  | GetSessionsByRepoRequest
+  | GetWorkspacesRequest
+  | GetSessionsByWorkspaceRequest
   | ReadMemoryContentRequest
   | GetUiPreferencesRequest
   | SetUiPreferencesRequest
@@ -144,17 +144,17 @@ export type AnyRequest =
 // Response Payloads (Host → GUI)
 // ---------------------------------------------------------------------------
 
-export interface GetReposResponse {
-  type: "getRepos";
+export interface GetWorkspacesResponse {
+  type: "getWorkspaces";
   requestId: string;
   payload: {
-    repos: Repository[];
+    workspaces: Workspace[];
   };
   error: string | null;
 }
 
-export interface GetSessionsByRepoResponse {
-  type: "getSessionsByRepo";
+export interface GetSessionsByWorkspaceResponse {
+  type: "getSessionsByWorkspace";
   requestId: string;
   payload: {
     sessions: Session[];
@@ -233,8 +233,8 @@ export interface OpenFileResponse {
  * Union of all possible response message types.
  */
 export type AnyResponse =
-  | GetReposResponse
-  | GetSessionsByRepoResponse
+  | GetWorkspacesResponse
+  | GetSessionsByWorkspaceResponse
   | ReadMemoryContentResponse
   | GetUiPreferencesResponse
   | SetUiPreferencesResponse
@@ -246,11 +246,11 @@ export type AnyResponse =
 // Push Messages (Host → GUI, unsolicited)
 // ---------------------------------------------------------------------------
 
-export interface ReposChangedPush {
-  type: "onReposChanged";
+export interface WorkspacesChangedPush {
+  type: "onWorkspacesChanged";
   requestId: "";
   payload: {
-    repos: Repository[];
+    workspaces: Workspace[];
   };
   error: null;
 }
@@ -258,7 +258,7 @@ export interface ReposChangedPush {
 /**
  * Union of all push message types.
  */
-export type AnyPushMessage = ReposChangedPush;
+export type AnyPushMessage = WorkspacesChangedPush;
 
 // ---------------------------------------------------------------------------
 // Message Type Helpers
@@ -268,14 +268,14 @@ export type AnyPushMessage = ReposChangedPush;
  * All known message type strings.
  */
 export const MessageTypes = {
-  GET_REPOS: "getRepos",
-  GET_SESSIONS_BY_REPO: "getSessionsByRepo",
+  GET_WORKSPACES: "getWorkspaces",
+  GET_SESSIONS_BY_WORKSPACE: "getSessionsByWorkspace",
   READ_MEMORY_CONTENT: "readMemoryContent",
   GET_UI_PREFERENCES: "getUiPreferences",
   SET_UI_PREFERENCES: "setUiPreferences",
   GET_WORKSPACE_STATE: "getWorkspaceState",
   SET_WORKSPACE_STATE: "setWorkspaceState",
-  ON_REPOS_CHANGED: "onReposChanged",
+  ON_WORKSPACES_CHANGED: "onWorkspacesChanged",
   OPEN_FILE: "openFile",
 } as const;
 

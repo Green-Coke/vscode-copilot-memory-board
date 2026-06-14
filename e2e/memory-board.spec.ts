@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+﻿import { test, expect, type Page } from "@playwright/test";
 
 /**
  * 在宽屏布局的主作用域内执行回调，避开窄屏/中屏同步渲染的副本。
@@ -22,11 +22,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("头部右上角统计与连接指示器", () => {
-  test("统计区在桌面尺寸可见且包含 repos/sessions", async ({ page }) => {
+  test("统计区在桌面尺寸可见且包含 workspaces/sessions", async ({ page }) => {
     await page.goto("/");
     const stats = page.locator('[data-testid="header-stats"]').first();
     await expect(stats).toBeVisible();
-    await expect(stats).toContainText("repos");
+    await expect(stats).toContainText("workspaces");
     await expect(stats).toContainText("sessions");
   });
 
@@ -40,24 +40,24 @@ test.describe("头部右上角统计与连接指示器", () => {
 });
 
 test.describe("文案修正", () => {
-  test("仓库级目录入口不再声称查看整个仓库源码结构", async ({ page }) => {
+  test("工作区级目录入口不再声称查看整个仓库源码结构", async ({ page }) => {
     await page.goto("/");
-    // 选择首个仓库以触发 SessionList 渲染“仓库级目录”入口
-    await page.locator('[data-testid^="repo-item-"]').first().click();
+    // 选择首个工作区以触发 SessionList 渲染"工作区级目录"入口
+    await page.locator('[data-testid^="workspace-item-"]').first().click();
     const entryButton = page
-      .getByRole("button", { name: /仓库级目录/ })
+      .getByRole("button", { name: /工作区级目录/ })
       .first();
     await expect(entryButton).toBeVisible();
     await expect(entryButton).toContainText("记忆文件目录");
     // 不应再包含原始误导文案
-    await expect(entryButton).not.toContainText("整个仓库的文件结构");
+    await expect(entryButton).not.toContainText("整个工作区的文件结构");
   });
 });
 
 test.describe("预览行为", () => {
   test("目录选中后会关闭文件预览并展示已选中目录空态", async ({ page }) => {
     await page.goto("/");
-    await page.locator('[data-testid^="repo-item-"]').first().click();
+    await page.locator('[data-testid^="workspace-item-"]').first().click();
     await page.locator('[data-testid^="session-item-"]').first().click();
     // 等待文件树加载
     await expect(page.locator('[data-testid="sort-control-file-tree"]').first()).toBeVisible();
@@ -84,7 +84,7 @@ test.describe("预览行为", () => {
 
   test("可以手动点击关闭按钮收起当前预览", async ({ page }) => {
     await page.goto("/");
-    await page.locator('[data-testid^="repo-item-"]').first().click();
+    await page.locator('[data-testid^="workspace-item-"]').first().click();
     await page.locator('[data-testid^="session-item-"]').first().click();
     await inWideScope(page, (scope) => {
       const files = Array.from(scope.querySelectorAll<HTMLButtonElement>("button"));
@@ -101,7 +101,7 @@ test.describe("预览行为", () => {
 
   test("预览总开关关闭后切换图标状态并持久化到 localStorage", async ({ page }) => {
     await page.goto("/");
-    await page.locator('[data-testid^="repo-item-"]').first().click();
+    await page.locator('[data-testid^="workspace-item-"]').first().click();
     await page.locator('[data-testid^="session-item-"]').first().click();
 
     const toggle = page.locator('[data-testid="preview-toggle"]').first();
@@ -117,10 +117,10 @@ test.describe("预览行为", () => {
 });
 
 test.describe("排序", () => {
-  test("仓库列表支持名称升序与创建时间升序切换", async ({ page }) => {
+  test("工作区列表支持名称升序与创建时间升序切换", async ({ page }) => {
     await page.goto("/");
-    const sortBy = page.locator('[data-testid="sort-by-repo"]').first();
-    const directionBtn = page.locator('[data-testid="sort-direction-repo"]').first();
+    const sortBy = page.locator('[data-testid="sort-by-workspace"]').first();
+    const directionBtn = page.locator('[data-testid="sort-direction-workspace"]').first();
 
     // 默认名称升序：按名字排序
     await expect(sortBy).toHaveValue("name");
@@ -130,11 +130,11 @@ test.describe("排序", () => {
     );
 
     // 切换到创建时间
-    await sortBy.selectOption("createdAt");
+    sortBy.selectOption("createdAt");
     await expect(sortBy).toHaveValue("createdAt");
 
     // 切换方向到降序
-    await directionBtn.click();
+    directionBtn.click();
     await expect(directionBtn).toHaveAttribute(
       "title",
       expect.stringContaining("降序")
@@ -143,36 +143,36 @@ test.describe("排序", () => {
 
   test("文件树排序控件支持名称 / 创建时间 / 更新时间三种字段", async ({ page }) => {
     await page.goto("/");
-    await page.locator('[data-testid^="repo-item-"]').first().click();
+    await page.locator('[data-testid^="workspace-item-"]').first().click();
     await page.locator('[data-testid^="session-item-"]').first().click();
     const sortBy = page.locator('[data-testid="sort-by-file-tree"]').first();
     await expect(sortBy).toHaveValue("name");
-    await sortBy.selectOption("createdAt");
+    sortBy.selectOption("createdAt");
     await expect(sortBy).toHaveValue("createdAt");
-    await sortBy.selectOption("updatedAt");
+    sortBy.selectOption("updatedAt");
     await expect(sortBy).toHaveValue("updatedAt");
   });
 });
 
 test.describe("钉选", () => {
-  test("仓库钉选后出现在 Pinned 分组顶部", async ({ page }) => {
+  test("工作区钉选后出现在 Pinned 分组顶部", async ({ page }) => {
     await page.goto("/");
-    // 钉选第一个仓库
-    await page.locator('[data-testid^="pin-repo-"]').first().click();
+    // 钉选第一个工作区
+    await page.locator('[data-testid^="pin-workspace-"]').first().click();
     // 应出现 Pinned 分组标题
     await expect(page.locator("span").filter({ hasText: /^Pinned$/ }).first()).toBeVisible();
     // 取消钉选
-    await page.locator('[data-testid^="pin-repo-"]').first().click();
+    await page.locator('[data-testid^="pin-workspace-"]').first().click();
     await expect(page.locator("span").filter({ hasText: /^Pinned$/ })).toHaveCount(0);
   });
 
   test("钉选状态会持久化到 localStorage", async ({ page }) => {
     await page.goto("/");
-    await page.locator('[data-testid^="pin-repo-"]').first().click();
+    await page.locator('[data-testid^="pin-workspace-"]').first().click();
     const stored = await page.evaluate(() =>
       localStorage.getItem("memory-board:workspace-state")
     );
-    expect(stored).toContain("pinnedRepoIds");
-    expect(stored).not.toContain('"pinnedRepoIds":[]');
+    expect(stored).toContain("pinnedWorkspaceIds");
+    expect(stored).not.toContain('"pinnedWorkspaceIds":[]');
   });
 });

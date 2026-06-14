@@ -1,4 +1,4 @@
-# GUI ↔ Extension Host 通信协议 (postMessage Protocol)
+﻿# GUI ↔ Extension Host 通信协议 (postMessage Protocol)
 
 本文档定义了 `@memory-board/gui`（运行在 Webview 中）与宿主环境（VS Code 插件 / 未来的 Electron 主进程）之间的 JSON 消息通信契约。
 
@@ -38,14 +38,14 @@ interface ResponseMessage {
 
 ## 2. 消息类型定义
 
-### 2.1 `getRepos` — 获取仓库列表
+### 2.1 `getWorkspaces` — 获取工作区列表
 
-获取本地已扫描到的 Copilot 记忆仓库列表。
+获取本地已扫描到的 Copilot 记忆工作区列表。
 
 **Request:**
 ```json
 {
-  "type": "getRepos",
+  "type": "getWorkspaces",
   "requestId": "req-001",
   "payload": {}
 }
@@ -54,12 +54,12 @@ interface ResponseMessage {
 **Response (Success):**
 ```json
 {
-  "type": "getRepos",
+  "type": "getWorkspaces",
   "requestId": "req-001",
   "payload": {
-    "repos": [
+    "workspaces": [
       {
-        "id": "repo-abc123",
+        "id": "ws-abc123",
         "name": "my-project",
         "path": "/home/user/.copilot/memory/my-project",
         "sessionCount": 5,
@@ -74,7 +74,7 @@ interface ResponseMessage {
 **Response (Error):**
 ```json
 {
-  "type": "getRepos",
+  "type": "getWorkspaces",
   "requestId": "req-001",
   "payload": {},
   "error": "Failed to scan memory directory: ENOENT"
@@ -83,17 +83,17 @@ interface ResponseMessage {
 
 ---
 
-### 2.2 `getSessionsByRepo` — 获取指定仓库的会话列表
+### 2.2 `getSessionsByWorkspace` — 获取指定工作区的会话列表
 
 根据仓库 ID 获取该仓库下所有 Session 的摘要信息。
 
 **Request:**
 ```json
 {
-  "type": "getSessionsByRepo",
+  "type": "getSessionsByWorkspace",
   "requestId": "req-002",
   "payload": {
-    "repoId": "repo-abc123"
+    "workspaceId": "ws-abc123"
   }
 }
 ```
@@ -101,13 +101,13 @@ interface ResponseMessage {
 **Response (Success):**
 ```json
 {
-  "type": "getSessionsByRepo",
+  "type": "getSessionsByWorkspace",
   "requestId": "req-002",
   "payload": {
     "sessions": [
       {
         "id": "session-xyz789",
-        "repoId": "repo-abc123",
+        "workspaceId": "ws-abc123",
         "title": "Session 2025-12-01 #1",
         "createdAt": "2025-12-01T08:00:00Z",
         "entryCount": 12
@@ -160,16 +160,16 @@ interface ResponseMessage {
 
 ## 3. 推送消息（Host → GUI，非请求-响应）
 
-### 3.1 `onReposChanged` — 仓库列表变更通知
+### 3.1 `onWorkspacesChanged` — 工作区列表变更通知
 
 当文件系统监控检测到记忆文件变更时，主动推送更新。
 
 ```json
 {
-  "type": "onReposChanged",
+  "type": "onWorkspacesChanged",
   "requestId": "",
   "payload": {
-    "repos": [ /* 同 getRepos 响应格式 */ ]
+    "workspaces": [ /* 同 getWorkspaces 响应格式 */ ]
   },
   "error": null
 }

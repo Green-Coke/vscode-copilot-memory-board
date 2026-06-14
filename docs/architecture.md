@@ -1,4 +1,4 @@
-# Architecture Design — vscode-copilot-memory-board
+﻿# Architecture Design — vscode-copilot-memory-board
 
 ## Overview
 
@@ -44,7 +44,7 @@
 ### 1. `@memory-board/core` — 核心逻辑层
 - **纯 Node.js/TypeScript**，不引入任何 DOM 或宿主 API
 - 负责扫描本地 Copilot 记忆目录
-- 解析 Session ID 与仓库关联
+- 解析 Session ID 与工作区关联
 - 读取和解析记忆文本文件
 - 导出 TypeScript 类型和通信协议定义
 
@@ -66,13 +66,13 @@
 [User Interaction in GUI]
         │
         ▼
-[Bridge.request('getRepos', {})]
+[Bridge.request('getWorkspaces', {})]
         │ postMessage / IPC
         ▼
 [Extension Host receives message]
         │
         ▼
-[core.MemoryParser.scanRepositories()]
+[core.MemoryParser.scanWorkspaces()]
         │
         ▼
 [Extension Host sends response]

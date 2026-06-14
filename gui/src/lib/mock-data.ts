@@ -6,14 +6,14 @@
 // 让 Memory Entries 文件树与预览能力可以完整演示。
 // ============================================================================
 
-import type { Repository, Session, MemoryEntry } from "@memory-board/core";
+import type { Workspace, Session, MemoryEntry } from "@memory-board/core";
 
 /**
- * Mock 仓库列表：模拟扫描到两个不同的仓库
+ * Mock 工作区列表：模拟扫描到两个不同的工作区
  */
-export const MOCK_REPOS: Repository[] = [
+export const MOCK_WORKSPACES: Workspace[] = [
   {
-    id: "repo-vscode-board",
+    id: "workspace-vscode-board",
     name: "vscode-copilot-memory-board",
     path: "/mock/copilot/memory/vscode-copilot-memory-board",
     sessionCount: 2,
@@ -21,7 +21,7 @@ export const MOCK_REPOS: Repository[] = [
     createdAt: "2026-05-20T08:00:00.000Z",
   },
   {
-    id: "repo-react-dashboard",
+    id: "workspace-react-dashboard",
     name: "react-performance-dashboard",
     path: "/mock/copilot/memory/react-performance-dashboard",
     sessionCount: 1,
@@ -31,26 +31,26 @@ export const MOCK_REPOS: Repository[] = [
 ];
 
 /**
- * Mock 会话列表：按仓库分组
+ * Mock 会话列表：按工作区分组
  */
 export const MOCK_SESSIONS: Session[] = [
   {
     id: "session-board-setup",
-    repoId: "repo-vscode-board",
+    workspaceId: "workspace-vscode-board",
     title: "Memory Board 前端搭建与样式调整",
     createdAt: "2026-06-13T08:00:00.000Z",
     entryCount: 4,
   },
   {
     id: "session-board-protocol",
-    repoId: "repo-vscode-board",
+    workspaceId: "workspace-vscode-board",
     title: "Bridge 协议与类型定义梳理",
     createdAt: "2026-06-12T16:20:00.000Z",
     entryCount: 2,
   },
   {
     id: "session-dashboard-perf",
-    repoId: "repo-react-dashboard",
+    workspaceId: "workspace-react-dashboard",
     title: "React 仪表盘性能优化排查",
     createdAt: "2026-06-11T14:00:00.000Z",
     entryCount: 3,

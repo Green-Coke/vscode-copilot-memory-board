@@ -6,7 +6,7 @@
 
 // Domain Types
 export type {
-  Repository,
+  Workspace,
   Session,
   MemoryEntry,
   MemoryCategory,
@@ -22,6 +22,7 @@ export {
   DEFAULT_UI_PREFERENCES,
   DEFAULT_LIST_SORT,
   DEFAULT_WORKSPACE_STATE,
+  DEFAULT_SESSION_IDS,
 } from "./types.js";
 
 // Protocol Types
@@ -29,10 +30,10 @@ export type {
   BaseMessage,
   RequestMessage,
   ResponseMessage,
-  GetReposRequest,
-  GetReposResponse,
-  GetSessionsByRepoRequest,
-  GetSessionsByRepoResponse,
+  GetWorkspacesRequest,
+  GetWorkspacesResponse,
+  GetSessionsByWorkspaceRequest,
+  GetSessionsByWorkspaceResponse,
   ReadMemoryContentRequest,
   ReadMemoryContentResponse,
   GetUiPreferencesRequest,
@@ -43,7 +44,7 @@ export type {
   GetWorkspaceStateResponse,
   SetWorkspaceStateRequest,
   SetWorkspaceStateResponse,
-  ReposChangedPush,
+  WorkspacesChangedPush,
   AnyRequest,
   AnyResponse,
   AnyPushMessage,
@@ -56,3 +57,6 @@ export { MessageTypes, generateRequestId } from "./protocol.js";
 
 // Core Classes
 export { MemoryParser } from "./memory-parser.js";
+export type { MemoryParserOptions } from "./memory-parser.js";
+export { parseChatSessionJsonl } from "./session-jsonl-parser.js";
+export type { ParsedChatSession } from "./session-jsonl-parser.js";

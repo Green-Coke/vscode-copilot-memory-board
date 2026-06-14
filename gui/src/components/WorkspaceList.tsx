@@ -1,32 +1,36 @@
 // ============================================================================
-// RepoList — Repository List Panel with Search
+// WorkspaceList — 工作区列表面板（含搜索）
 // ============================================================================
 
 import { useState, useMemo } from "react";
-import type { Repository, SortOption } from "@memory-board/core";
+import type { Workspace, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { FolderGit2, Clock, ChevronRight, Search, X } from "lucide-react";
 import { PinnedButton } from "@/components/PinnedButton";
 import { SortControl } from "@/components/SortControl";
 import { sortItems } from "@/lib/sort-utils";
 
-interface RepoListProps {
-  repos: Repository[];
+interface WorkspaceListProps {
+  /** 工作区列表 */
+  workspaces: Workspace[];
+  /** 当前选中的工作区 ID */
   selectedId: string | null;
-  onSelect: (repo: Repository) => void;
+  /** 选中某个工作区时的回调 */
+  onSelect: (workspace: Workspace) => void;
+  /** 是否处于加载状态 */
   loading?: boolean;
-  /** 仓库列表排序选项（受控） */
+  /** 工作区列表排序选项（受控） */
   sortOption: SortOption;
   /** 排序变化回调（受控） */
   onSortChange: (next: SortOption) => void;
-  /** 已钉选的仓库 ID 列表（受控） */
+  /** 已钉选的工作区 ID 列表（受控） */
   pinnedIds: string[];
   /** 钉选集合变化回调（受控） */
   onPinnedChange: (next: string[]) => void;
 }
 
-export function RepoList({
-  repos,
+export function WorkspaceList({
+  workspaces,
   selectedId,
   onSelect,
   loading,
@@ -34,7 +38,7 @@ export function RepoList({
   onSortChange,
   pinnedIds,
   onPinnedChange,
-}: RepoListProps) {
+}: WorkspaceListProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   // ---------------------------------------------------------------------------
@@ -42,21 +46,21 @@ export function RepoList({
   // 钉选项始终排在最上方；钉选组与非钉选组各自按当前 sortOption 排序
   // ---------------------------------------------------------------------------
   const { pinned, unpinned } = useMemo(() => {
-    const filtered = repos.filter((repo) =>
-      repo.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const filtered = workspaces.filter((workspace) =>
+      workspace.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
     const sortedAll = sortItems(filtered, sortOption);
     return {
-      pinned: sortedAll.filter((r) => pinnedIds.includes(r.id)),
-      unpinned: sortedAll.filter((r) => !pinnedIds.includes(r.id)),
+      pinned: sortedAll.filter((w) => pinnedIds.includes(w.id)),
+      unpinned: sortedAll.filter((w) => !pinnedIds.includes(w.id)),
     };
-  }, [repos, searchQuery, sortOption, pinnedIds]);
+  }, [workspaces, searchQuery, sortOption, pinnedIds]);
 
-  /** 切换某仓库的钉选状态 */
-  const togglePin = (repoId: string) => {
-    const next = pinnedIds.includes(repoId)
-      ? pinnedIds.filter((id) => id !== repoId)
-      : [...pinnedIds, repoId];
+  /** 切换某工作区的钉选状态 */
+  const togglePin = (workspaceId: string) => {
+    const next = pinnedIds.includes(workspaceId)
+      ? pinnedIds.filter((id) => id !== workspaceId)
+      : [...pinnedIds, workspaceId];
     onPinnedChange(next);
   };
 
@@ -87,7 +91,7 @@ export function RepoList({
   // ---------------------------------------------------------------------------
   // Render Empty State
   // ---------------------------------------------------------------------------
-  if (repos.length === 0) {
+  if (workspaces.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
         {/* Futuristic SVG Radar scan illustration */}
@@ -101,10 +105,10 @@ export function RepoList({
           <FolderGit2 className="absolute w-6 h-6 text-brand-indigo animate-pulse" />
         </div>
         <h3 className="text-xs font-bold tracking-wider text-text-primary uppercase font-display">
-          No repositories scanned
+          暂无工作区
         </h3>
         <p className="text-[11px] text-text-secondary mt-1.5 max-w-[200px] leading-relaxed">
-          Copilot local workspace memory storage will automatically synchronize here.
+          在本工作区使用 Copilot Chat 后，记忆会自动同步到此处。
         </p>
       </div>
     );
@@ -117,7 +121,7 @@ export function RepoList({
         <SortControl
           value={sortOption}
           onChange={onSortChange}
-          testIdScope="repo"
+          testIdScope="workspace"
         />
       </div>
 
@@ -129,7 +133,7 @@ export function RepoList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
-            aria-label="搜索仓库"
+            aria-label="搜索工作区"
           />
           {/* 存在搜索词时清空按钮自动向左避让，放大镜固定在最右侧，避免二者重叠 */}
           {searchQuery ? (
@@ -148,7 +152,7 @@ export function RepoList({
       <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
         {pinned.length === 0 && unpinned.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center font-mono text-[11px] text-text-muted">
-            No matching repos found
+            未找到匹配的工作区
           </div>
         ) : (
           <>
@@ -162,14 +166,14 @@ export function RepoList({
                   </span>
                   <div className="h-px flex-1 bg-amber-500/30" />
                 </div>
-                {pinned.map((repo, index) =>
-                  renderRepo(repo, index, true)
+                {pinned.map((workspace, index) =>
+                  renderWorkspace(workspace, index, true)
                 )}
                 {unpinned.length > 0 && (
                   <div className="flex items-center gap-2 px-1 mt-2">
                     <div className="h-px flex-1 bg-border-subtle" />
                     <span className="text-[9px] font-bold tracking-widest text-text-muted font-display uppercase">
-                      Repositories
+                      Workspaces
                     </span>
                     <div className="h-px flex-1 bg-border-subtle" />
                   </div>
@@ -177,8 +181,8 @@ export function RepoList({
               </>
             )}
             {/* 非钉选分组 */}
-            {unpinned.map((repo, index) =>
-              renderRepo(repo, index, false)
+            {unpinned.map((workspace, index) =>
+              renderWorkspace(workspace, index, false)
             )}
           </>
         )}
@@ -187,16 +191,16 @@ export function RepoList({
   );
 
   /**
-   * 渲染单个仓库条目
+   * 渲染单个工作区条目
    */
-  function renderRepo(repo: Repository, index: number, isPinned: boolean) {
-    const isSelected = selectedId === repo.id;
-    const repoPinned = pinnedIds.includes(repo.id);
+  function renderWorkspace(workspace: Workspace, index: number, isPinned: boolean) {
+    const isSelected = selectedId === workspace.id;
+    const workspacePinned = pinnedIds.includes(workspace.id);
 
     return (
       <div
-        key={repo.id}
-        data-testid={`repo-item-${repo.id}`}
+        key={workspace.id}
+        data-testid={`workspace-item-${workspace.id}`}
         className={cn(
           "group relative flex items-center gap-2 px-3 py-3 rounded-lg text-left select-none outline-none cursor-pointer",
           "transition-all duration-300 ease-out",
@@ -206,8 +210,8 @@ export function RepoList({
             : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
         )}
         style={{ animationDelay: `${index * 40}ms` }}
-        onClick={() => onSelect(repo)}
-        title={repo.path}
+        onClick={() => onSelect(workspace)}
+        title={workspace.path}
       >
         {/* Visual Glow line on left border for selected item */}
         {isSelected && (
@@ -232,33 +236,33 @@ export function RepoList({
           <FolderGit2 className="w-4 h-4" />
         </div>
 
-        {/* Central repository details */}
+        {/* Central workspace details */}
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold font-display truncate tracking-wide">
-            {repo.name}
+            {workspace.name}
           </p>
           <div className="flex items-center gap-2 mt-1 font-mono text-[9px] text-text-secondary">
             <span className="flex items-center gap-1 font-semibold text-brand-indigo/80">
-              {repo.sessionCount} sessions
+              {workspace.sessionCount} sessions
             </span>
             <span className="text-text-muted">•</span>
             <span className="flex items-center gap-0.5 text-text-muted">
               <Clock className="w-2.5 h-2.5" />
-              {formatRelativeTime(repo.lastModified)}
+              {formatRelativeTime(workspace.lastModified)}
             </span>
           </div>
           {/* Truncated workspace folder path display */}
           <span className="block text-[8px] font-mono text-text-muted/65 truncate mt-0.5">
-            {repo.path}
+            {workspace.path}
           </span>
         </div>
 
         {/* 钉选按钮 */}
         <PinnedButton
-          pinned={repoPinned}
-          onClick={() => togglePin(repo.id)}
-          testIdScope="repo"
-          itemId={repo.id}
+          pinned={workspacePinned}
+          onClick={() => togglePin(workspace.id)}
+          testIdScope="workspace"
+          itemId={workspace.id}
         />
 
         {/* Chevron marker indicator */}

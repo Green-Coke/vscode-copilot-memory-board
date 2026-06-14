@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // Layout — Responsive Adaptive Layout Container
 // ============================================================================
 // Provides three layout modes with glassmorphism styles:
@@ -27,34 +27,34 @@ const isVscode = getBridgeEnvironment() === "vscode";
 
 interface NarrowHeaderProps {
   currentView: ViewMode;
-  selectedRepo: any;
+  selectedWorkspace: any;
   selectedSession: any;
-  onBackToRepos?: () => void;
+  onBackToWorkspaces?: () => void;
   onBackToSessions?: () => void;
-  /** 当前是否正处于仓库目录视图 */
-  viewingRepoFiles?: boolean;
+  /** 当前是否正处于工作区级目录视图 */
+  viewingWorkspaceFiles?: boolean;
 }
 
 /**
  * 窄屏单栏模式下专用的顶部导航返回条。
  * 解决了面包屑路径过长、容易发生换行或重叠的问题。
- * - Sessions 视图下显示：[<-] 仓库名
+ * - Sessions 视图下显示：[<-] 工作区名
  * - Entries 视图下显示：[<-] 会话标题
  */
 function NarrowHeader({
   currentView,
-  selectedRepo,
+  selectedWorkspace,
   selectedSession,
-  onBackToRepos,
+  onBackToWorkspaces,
   onBackToSessions,
-  viewingRepoFiles = false,
+  viewingWorkspaceFiles = false,
 }: NarrowHeaderProps) {
-  if (currentView === "repos") return null;
+  if (currentView === "workspaces") return null;
 
-  const handleBack = currentView === "entries" ? onBackToSessions : onBackToRepos;
+  const handleBack = currentView === "entries" ? onBackToSessions : onBackToWorkspaces;
   const title = currentView === "entries"
-    ? (viewingRepoFiles ? `${selectedRepo?.name} / 仓库目录` : selectedSession?.title)
-    : selectedRepo?.name;
+    ? (viewingWorkspaceFiles ? `${selectedWorkspace?.name} / 工作区级目录` : selectedSession?.title)
+    : selectedWorkspace?.name;
 
   return (
     <nav className="flex items-center gap-2 px-3 py-2 border-b border-border-default bg-surface-1/80 backdrop-blur-md z-20 relative min-h-[40px] shrink-0">
@@ -107,8 +107,8 @@ export function Panel({
   hideHeaderInNarrow = false,
 }: PanelProps) {
   // 这是一个面板容器组件，主要负责统一管理标题栏和可滚动内容区。
-  // 若标题是 "Repositories" 且传入了折叠按钮 leadingAction，则只显示折叠按钮，隐藏图标和标题以防左上角发生重叠。
-  const shouldHideTitleAndIcon = title === "Repositories" && leadingAction;
+  // 若标题是 "工作区" 且传入了折叠按钮 leadingAction，则只显示折叠按钮，隐藏图标和标题以防左上角发生重叠。
+  const shouldHideTitleAndIcon = title === "工作区" && leadingAction;
 
   return (
     <div className={cn("flex flex-col h-full min-h-0 relative z-10", className)}>
@@ -146,28 +146,28 @@ export function Panel({
 // ---------------------------------------------------------------------------
 
 /**
- * 仓库选择与状态数据接口定义
+ * 工作区选择与状态数据接口定义
  */
 interface AppHeaderProps {
   stats?: {
-    repos: number;
+    workspaces: number;
     sessions: number;
     entries: number;
   };
-  repos?: any[];
-  selectedRepo?: any;
-  onSelectRepo?: (repo: any) => void;
+  workspaces?: any[];
+  selectedWorkspace?: any;
+  onSelectWorkspace?: (workspace: any) => void;
 }
 
 /**
  * 应用程序顶部 Header 组件
- * 包含品牌 Logo、当前仓库切换下拉菜单、仓库栏展开折叠按钮以及数据统计
+ * 包含品牌 Logo、当前工作区切换下拉菜单、工作区栏展开折叠按钮以及数据统计
  */
 export function AppHeader({
   stats,
-  repos,
-  selectedRepo,
-  onSelectRepo
+  workspaces,
+  selectedWorkspace,
+  onSelectWorkspace
 }: AppHeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -209,15 +209,15 @@ export function AppHeader({
 
       {/* Connection Indicator & Optional Stats */}
       <div className="flex items-center gap-4">
-        {/* Repo Switcher / 顶部仓库快速切换器 */}
-        {repos && repos.length > 0 && (
+        {/* Workspace Switcher / 顶部工作区快速切换器 */}
+        {workspaces && workspaces.length > 0 && (
           <div className="relative font-sans text-xs">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center gap-2 px-4 py-1.5 rounded bg-surface-2 border border-border-default hover:border-brand-indigo transition-colors cursor-pointer text-text-primary font-medium"
             >
               <FolderGit2 className="w-4 h-4 text-brand-indigo" />
-              <span className="max-w-[220px] truncate">{selectedRepo ? selectedRepo.name : "选择仓库..."}</span>
+              <span className="max-w-[220px] truncate">{selectedWorkspace ? selectedWorkspace.name : "选择工作区…"}</span>
               <ChevronDown className={cn("w-3.5 h-3.5 text-text-muted transition-transform duration-200", isDropdownOpen && "rotate-180")} />
             </button>
 
@@ -226,15 +226,15 @@ export function AppHeader({
                 <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
                 <div className="absolute right-0 mt-1.5 w-80 max-h-80 overflow-y-auto rounded-lg border border-border-default bg-surface-2 shadow-xl z-50 p-1 flex flex-col gap-1 backdrop-blur-md">
                   <div className="px-2 py-1.5 text-[10px] font-bold tracking-widest text-text-muted font-display uppercase border-b border-border-subtle mb-1">
-                    切换仓库
+                    切换工作区
                   </div>
-                  {repos.map((repo) => {
-                    const isSelected = selectedRepo?.id === repo.id;
+                  {workspaces.map((workspace) => {
+                    const isSelected = selectedWorkspace?.id === workspace.id;
                     return (
                       <button
-                        key={repo.id}
+                        key={workspace.id}
                         onClick={() => {
-                          onSelectRepo?.(repo);
+                          onSelectWorkspace?.(workspace);
                           setIsDropdownOpen(false);
                         }}
                         className={cn(
@@ -244,8 +244,8 @@ export function AppHeader({
                             : "hover:bg-surface-3/60 text-text-primary border border-transparent"
                         )}
                       >
-                        <span className="font-bold text-xs truncate w-full">{repo.name}</span>
-                        <span className="text-[9px] text-text-secondary truncate w-full font-mono mt-0.5">{repo.path}</span>
+                        <span className="font-bold text-xs truncate w-full">{workspace.name}</span>
+                        <span className="text-[9px] text-text-secondary truncate w-full font-mono mt-0.5">{workspace.path}</span>
                       </button>
                     );
                   })}
@@ -262,8 +262,8 @@ export function AppHeader({
           >
             <span className="flex items-center gap-1.5">
               <FolderGit2 className="w-4 h-4 text-text-muted" />
-              <span className="font-bold text-text-primary">{stats.repos}</span>{" "}
-              <span className="text-text-muted">repos</span>
+              <span className="font-bold text-text-primary">{stats.workspaces}</span>{" "}
+              <span className="text-text-muted">workspaces</span>
             </span>
           </div>
         )}
@@ -276,7 +276,7 @@ export function AppHeader({
 // Layout modes
 // ---------------------------------------------------------------------------
 
-export type ViewMode = "repos" | "sessions" | "entries";
+export type ViewMode = "workspaces" | "sessions" | "entries";
 
 /**
  * 响应式布局容器 Props 接口
@@ -288,27 +288,30 @@ interface LayoutProps {
   currentView: ViewMode;
   stats?: AppHeaderProps["stats"];
   repoPanelCollapsed?: boolean;
+  /** 工作区列表数据（Adapter: 保留 repo 命名以兼容 App.tsx 调用方） */
   repos?: any[];
+  /** 当前选中的工作区（Adapter: 保留 repo 命名以兼容 App.tsx 调用方） */
   selectedRepo?: any;
+  /** 选中工作区回调（Adapter: 保留 repo 命名以兼容 App.tsx 调用方） */
   onSelectRepo?: (repo: any) => void;
-  /** 返回仓库列表的回调 */
+  /** 返回工作区列表的回调（Adapter: 保留 repo 命名以兼容 App.tsx 调用方） */
   onBackToRepos?: () => void;
   /** 返回会话列表的回调 */
   onBackToSessions?: () => void;
   /** 当前选中的会话信息 */
   selectedSession?: any;
-  /** 当前是否为仓库级目录视图 */
+  /** 当前是否为工作区级目录视图（Adapter: 保留 repo 命名以兼容 App.tsx 调用方） */
   viewingRepoFiles?: boolean;
 }
 
 /**
- * 仓库栏折叠按钮：VS Code 插件模式下没有 AppHeader，
+ * 工作区栏折叠按钮：VS Code 插件模式下没有 AppHeader，
  * 这个紧凑按钮提供展开/折叠入口，挂在 Panel 标题栏图标左侧。
  *
-   * disabled=true（未选择仓库）时按钮置灰且不可点击，但仍保持可见，
+   * disabled=true（未选择工作区）时按钮置灰且不可点击，但仍保持可见，
    * 明确传达“当前不可折叠”的状态；由 App.tsx 通过 Panel 的 leadingAction 注入。
    */
-export function RepoCollapseButton({
+export function WorkspaceCollapseButton({
   collapsed,
   onToggle,
   disabled = false,
@@ -325,10 +328,10 @@ export function RepoCollapseButton({
       aria-disabled={disabled}
       title={
         disabled
-          ? "未选择仓库时不可折叠"
+          ? "未选择工作区时不可折叠"
           : collapsed
-            ? "展开仓库栏"
-            : "折叠仓库栏"
+            ? "展开工作区栏"
+            : "折叠工作区栏"
       }
       className={cn(
         "p-1.5 rounded transition-colors flex items-center justify-center shrink-0 min-[900px]:flex hidden",
@@ -379,16 +382,14 @@ export function AdaptiveLayout({
       {!isVscode && (
         <AppHeader
           stats={stats}
-          repos={repos}
-          selectedRepo={selectedRepo}
-          onSelectRepo={onSelectRepo}
+          workspaces={repos as any}
+          selectedWorkspace={selectedRepo as any}
+          onSelectWorkspace={onSelectRepo as any}
         />
       )}
 
       {/* 宽屏布局（≥900px）：三栏比例自适应布局，带有最小/最大宽度限制 */}
       <div className="hidden min-[900px]:flex flex-1 min-h-0 z-10 relative">
-        {/* Repositories 仓库栏：占宽约 22%，最小 260px，最大 520px。
-            其标题栏左侧的折叠按钮由 App.tsx 构建的 Panel 的 leadingAction 提供。 */}
         {!repoPanelCollapsed && (
           <div className="w-[22%] min-w-[260px] max-w-[520px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm">
             {repoPanel}
@@ -410,17 +411,17 @@ export function AdaptiveLayout({
 
       {/* 中等屏幕布局（500–899px）：双栏“列表 / 详情”导航。
           中屏左列规则：
-          - repos 视图：仓库列表（标题栏内可渲染折叠按钮）
+          - workspaces 视图：工作区列表（标题栏内可渲染折叠按钮）
           - sessions 视图：会话列表
           - entries 视图：会话列表（主列为条目/详情，保持上下文） */}
       <div className="hidden min-[500px]:flex min-[900px]:hidden flex-1 min-h-0 z-10 relative">
         <div className="w-[40%] min-w-[220px] max-w-[420px] shrink-0 border-r border-border-default/80 bg-surface-1/40 backdrop-blur-sm relative">
-          {currentView === "repos" ? repoPanel : sessionPanel}
+          {currentView === "workspaces" ? repoPanel : sessionPanel}
         </div>
         {/* 右侧主视口栏：填充剩余宽度 */}
         <div className="flex-1 min-w-0 bg-surface-1/20">
           {currentView === "entries" ? entryPanel : (
-            currentView === "repos" ? entryPanel : sessionPanel
+            currentView === "workspaces" ? entryPanel : sessionPanel
           )}
         </div>
       </div>
@@ -429,14 +430,14 @@ export function AdaptiveLayout({
       <div className="flex min-[500px]:hidden flex-col flex-1 min-h-0 z-10 relative">
         <NarrowHeader
           currentView={currentView}
-          selectedRepo={selectedRepo}
+          selectedWorkspace={selectedRepo as any}
           selectedSession={selectedSession}
-          onBackToRepos={onBackToRepos}
+          onBackToWorkspaces={onBackToRepos as any}
           onBackToSessions={onBackToSessions}
-          viewingRepoFiles={viewingRepoFiles}
+          viewingWorkspaceFiles={viewingRepoFiles as any}
         />
         <div className="flex-1 overflow-y-auto min-h-0 bg-surface-1/30">
-          {currentView === "repos" && repoPanel}
+          {currentView === "workspaces" && repoPanel}
           {currentView === "sessions" && sessionPanel}
           {currentView === "entries" && entryPanel}
         </div>

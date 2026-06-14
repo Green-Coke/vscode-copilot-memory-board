@@ -130,7 +130,7 @@ function mergePartialWorkspaceState(
   return {
     ...base,
     ...patch,
-    repoSort: patch.repoSort ?? base.repoSort,
+    workspaceSort: patch.workspaceSort ?? base.workspaceSort,
     sessionSort: patch.sessionSort ?? base.sessionSort,
     fileTreeSort: patch.fileTreeSort ?? base.fileTreeSort,
   };
@@ -193,11 +193,11 @@ function writeWorkspaceState(state: WorkspaceState): void {
  */
 function cloneDefaultWorkspaceState(): WorkspaceState {
   return {
-    repoSort: { ...DEFAULT_WORKSPACE_STATE.repoSort },
+    workspaceSort: { ...DEFAULT_WORKSPACE_STATE.workspaceSort },
     sessionSort: { ...DEFAULT_WORKSPACE_STATE.sessionSort },
     fileTreeSort: { ...DEFAULT_WORKSPACE_STATE.fileTreeSort },
     previewVisible: DEFAULT_WORKSPACE_STATE.previewVisible,
-    pinnedRepoIds: [...DEFAULT_WORKSPACE_STATE.pinnedRepoIds],
+    pinnedWorkspaceIds: [...DEFAULT_WORKSPACE_STATE.pinnedWorkspaceIds],
     pinnedSessionIds: [...DEFAULT_WORKSPACE_STATE.pinnedSessionIds],
   };
 }
@@ -211,25 +211,25 @@ async function handleMockRequest(
 ): Promise<ResponseMessage> {
   // Standalone 浏览器模式无法访问本地磁盘上的 Copilot 内存目录，
   // 因此这里直接返回内置的纯前端 mock 数据，让仓库 / 会话 / 文件树可被完整演示。
-  const { MOCK_REPOS, MOCK_SESSIONS, MOCK_ENTRIES } = await import(
+  const { MOCK_WORKSPACES, MOCK_SESSIONS, MOCK_ENTRIES } = await import(
     "@/lib/mock-data"
   );
 
   switch (request.type) {
-    case "getRepos": {
+    case "getWorkspaces": {
       return {
-        type: "getRepos",
+        type: "getWorkspaces",
         requestId: request.requestId,
-        payload: { repos: MOCK_REPOS },
+        payload: { workspaces: MOCK_WORKSPACES },
         error: null,
       };
     }
-    case "getSessionsByRepo": {
+    case "getSessionsByWorkspace": {
       const sessions = MOCK_SESSIONS.filter(
-        (s) => s.repoId === request.payload.repoId
+        (s) => s.workspaceId === request.payload.workspaceId
       );
       return {
-        type: "getSessionsByRepo",
+        type: "getSessionsByWorkspace",
         requestId: request.requestId,
         payload: { sessions },
         error: null,

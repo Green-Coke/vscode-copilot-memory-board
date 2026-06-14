@@ -317,15 +317,15 @@ body {
 /**
  * 根据仓库 ID 生成仓库级骨架文件树
  *
- * 与会话级文件树（getMockFileTree）不同，这里展示整个仓库的完整目录结构，
- * 包含 .vscode、docs、src、gui 等典型仓库骨架，便于演示 "仓库级目录" 视图。
+ * 与会话级文件树（getMockFileTree）不同，这里展示整个工作区的完整目录结构，
+ * 包含 .vscode、docs、src、gui 等典型工作区骨架，便于演示 "工作区级目录" 视图。
  *
- * @param repoId 当前选中的仓库 ID，用于生成个性化标识
+ * @param workspaceId 当前选中的工作区 ID，用于生成个性化标识
  * @returns 多层级的 MockFsNode 数组，包含文本、JSON、Markdown、图片等示例文件
  */
-export function getMockRepoFileTree(repoId: string): MockFsNode[] {
-  // 取仓库 ID 后缀片段，用于在示例内容中体现个性化数据
-  const suffix = repoId.split("-").pop() ?? "repo";
+export function getMockWorkspaceFileTree(workspaceId: string): MockFsNode[] {
+  // 取工作区 ID 后缀片段，用于在示例内容中体现个性化数据
+  const suffix = workspaceId.split("-").pop() ?? "workspace";
 
   return [
     {

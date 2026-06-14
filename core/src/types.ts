@@ -6,41 +6,55 @@
 // ============================================================================
 
 /**
- * Represents a scanned repository containing Copilot memory data.
+ * 表示一个被扫描到的 VS Code 工作区。
+ *
+ * 在实际存储模型里，1 个 workspace 等价于 workspaceStorage/<workspaceId> 目录，
+ * 该目录下若存在 GitHub.copilot-chat/memory-tool/memories 子目录则视为"有记忆数据"。
  */
-export interface Repository {
-  /** Unique identifier for the repository */
+export interface Workspace {
+  /** 工作区唯一标识符（workspaceStorage 下的 MD5 hex 目录名） */
   id: string;
-  /** Human-readable repository name */
+  /** 人类可读的工作区名称（从 workspace.json 的 folder URI 解码出 basename） */
   name: string;
-  /** Absolute filesystem path to the repository's memory directory */
+  /** 该工作区对应的真实磁盘根路径（folder URI 解码后的路径） */
   path: string;
-  /** Number of sessions found in this repository */
+  /** 该工作区下的 session 总数（包含组建的"工作区级目录"特殊 session） */
   sessionCount: number;
-  /** ISO 8601 timestamp of the last modification */
+  /** 最近一次修改时间（ISO 8601） */
   lastModified: string;
   /**
-   * ISO 8601 timestamp of the repository creation.
-   * In the extension, derived from the memory directory folder's filesystem
-   * creation time (birthtime, falling back to ctime/mtime when absent).
+   * 创建时间（ISO 8601）。
+   * 真实实现中由 memories 目录的 fs birthtime/ctime 推导。
    */
   createdAt: string;
 }
 
 /**
- * Represents a single conversation session within a repository.
+ * 表示一个工作区中的会话。
+ *
+ * Session 概念对应 memories 目录下的每个子目录：
+ * - 名称为 "repo" 的子目录是特殊的"工作区级目录"session（isRepo=true，id=DEFAULT_SESSION_IDS.REPO）
+ * - 名称为 base64 编码 UUID 的子目录是普通 session，解码后即对应 chatSessions/<sessionId>.jsonl
  */
 export interface Session {
-  /** Unique identifier for the session */
+  /** Session 唯一标识：
+   *  - 普通 session = base64 解码后的 UUID
+   *  - 工作区级目录 session = DEFAULT_SESSION_IDS.REPO
+   */
   id: string;
-  /** Parent repository ID */
-  repoId: string;
-  /** Human-readable session title */
+  /** 父工作区 ID */
+  workspaceId: string;
+  /** Session 显示标题（从 jsonl 的 customTitle 或首条用户消息推导） */
   title: string;
-  /** ISO 8601 timestamp of session creation */
+  /** 创建时间（ISO 8601） */
   createdAt: string;
-  /** Number of memory entries in this session */
+  /** Session 下的 memory 条目数量 */
   entryCount: number;
+  /**
+   * 是否是"工作区级目录"特殊 session（对应 memories/repo 目录）。
+   * 默认 false，仅当子目录名为 "repo" 时为 true。
+   */
+  isRepo?: boolean;
 }
 
 /**
@@ -90,9 +104,9 @@ export type SortBy = "name" | "createdAt" | "updatedAt";
 export type SortDirection = "asc" | "desc";
 
 /**
- * 钉选项类型：repo 为仓库，session 为会话
+ * 钉选项类型：workspace 为工作区，session 为会话
  */
-export type PinnedItemType = "repo" | "session";
+export type PinnedItemType = "workspace" | "session";
 
 /**
  * 用于列表选项（仓库 / session / 文件树节点）的统一排序描述
@@ -132,28 +146,39 @@ export const DEFAULT_LIST_SORT: SortOption = {
  * 按工作区保存排序与钉选集合
  */
 export interface WorkspaceState {
-  /** 仓库列表排序 */
-  repoSort: SortOption;
+  /** 工作区列表排序 */
+  workspaceSort: SortOption;
   /** session 列表排序 */
   sessionSort: SortOption;
   /** 文件树排序 */
   fileTreeSort: SortOption;
   /** 当前是否展开预览面板（仅在 enableFilePreview 为 true 时生效） */
   previewVisible: boolean;
-  /** 已钉选的仓库 ID 集合 */
-  pinnedRepoIds: string[];
+  /** 已钉选的工作区 ID 集合 */
+  pinnedWorkspaceIds: string[];
   /** 已钉选的 session ID 集合 */
   pinnedSessionIds: string[];
-}
+};
 
 /**
  * 默认工作区状态
  */
 export const DEFAULT_WORKSPACE_STATE: WorkspaceState = {
-  repoSort: { ...DEFAULT_LIST_SORT },
+  workspaceSort: { ...DEFAULT_LIST_SORT },
   sessionSort: { ...DEFAULT_LIST_SORT },
   fileTreeSort: { ...DEFAULT_LIST_SORT },
   previewVisible: true,
-  pinnedRepoIds: [],
+  pinnedWorkspaceIds: [],
   pinnedSessionIds: [],
 };
+
+/**
+ * 特殊 session ID 常量集合。
+ *
+ * REPO 用于标识 memories 目录下的 "repo" 子目录映射出的"工作区级目录" session。
+ * 该 session 不是基于某个具体 sessionId 创建的，而是特殊的合成分组。
+ */
+export const DEFAULT_SESSION_IDS = {
+  /** memories/repo 子目录对应的工作区级目录 session ID */
+  REPO: "_repo_",
+} as const;
