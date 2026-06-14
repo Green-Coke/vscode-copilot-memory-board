@@ -21,6 +21,7 @@ import { AdaptiveLayout, Panel, WorkspaceCollapseButton, type ViewMode } from "@
 import { WorkspaceList } from "@/components/WorkspaceList";
 import { SessionList } from "@/components/SessionList";
 import { MemoryViewer } from "@/components/MemoryViewer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FolderGit2, MessageSquare, FileText } from "lucide-react";
 
 export function App() {
@@ -253,7 +254,13 @@ export function App() {
           icon={<FileText className="w-3.5 h-3.5 text-text-secondary" />}
           hideHeaderInNarrow={true}
         >
-          <MemoryViewer
+          <ErrorBoundary
+            onError={(err) => {
+              // 日志便于排查：entries 格式异常、相对路径缺失等都会集中暴露在这里
+              console.error("[App] MemoryViewer 渲染异常：", err);
+            }}
+          >
+            <MemoryViewer
             entries={entries ?? []}
             loading={entriesLoading}
             sessionTitle={
@@ -279,6 +286,7 @@ export function App() {
               updateWorkspaceState({ fileTreeSort: next })
             }
           />
+          </ErrorBoundary>
         </Panel>
       }
     />
