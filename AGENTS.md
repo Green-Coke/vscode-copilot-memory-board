@@ -12,7 +12,7 @@
 ❌ 错误：This is a function to calculate the total.
 ✅ 正确：这是一个用于计算总数的函数。
 
-## 添加或者添加任何语言的代码方法时，确保加上注释说明这个方法的作用
+## 添加或者编辑任何语言的代码方法时，确保加上注释说明这个方法的作用，较为复杂逻辑也应该添加注释说明逻辑。
 
 ## 当开发VsCode extension前优先仔细读取 `docs\notes`目录中的指南，如果指南中没有相应地内容时，必须浏览查询 `https://code.visualstudio.com/api` 官方文档， 多搜索多查询。
 
