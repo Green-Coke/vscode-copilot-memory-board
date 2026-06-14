@@ -40,7 +40,7 @@ GitHub Copilot accumulates "memories" across conversations — recording your pr
 
 ---
 
-## � Installation
+## 🚀 Installation
 
 Install through VS Code extensions. Search for `Copilot Memory Board`
 
@@ -54,6 +54,6 @@ ext install Green-Coke.vscode-copilot-memory-board
 
 ---
 
-## �📄 License
+## 📄 License
 
 [MIT](./LICENSE)
