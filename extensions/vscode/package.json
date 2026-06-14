@@ -3,7 +3,7 @@
   "displayName": "Copilot Memory Board",
   "description": "Visualize and manage GitHub Copilot's long-term memory as an interactive board in VS Code.",
   "version": "0.0.1",
-  "publisher": "memory-board",
+  "publisher": "Green-Coke",
   "license": "MIT",
   "repository": {
     "type": "git",
