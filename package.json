@@ -1,5 +1,5 @@
 {
-  "name": "vscode-copilot-memory-board",
+  "name": "vscode-copilot-memory-board-workspace",
   "version": "0.0.1",
   "private": true,
   "description": "Visualize and manage GitHub Copilot's long-term memory as an interactive board — available as a VS Code extension and standalone desktop app.",
@@ -20,7 +20,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "clean": "pnpm -r run clean",
-    "package:vsix": "node -e \"require('fs').mkdirSync('.tmp/publish/vscode',{recursive:true})\" && pnpm --filter @memory-board/core build && pnpm --filter @memory-board/gui build && pnpm --filter vscode-copilot-memory-board run build:webview && pnpm --filter vscode-copilot-memory-board run package",
+    "package:vsix": "node -e \"require('fs').mkdirSync('.tmp/publish/vscode',{recursive:true})\" && pnpm --filter @memory-board/core build && pnpm --filter @memory-board/gui build && pnpm --filter ./extensions/vscode run build:webview && pnpm --filter ./extensions/vscode run package",
     "prepare": "echo 'Ready'"
   },
   "devDependencies": {
