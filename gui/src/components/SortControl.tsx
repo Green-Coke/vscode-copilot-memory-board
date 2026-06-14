@@ -5,7 +5,7 @@
 // 通过 data-testid 暴露稳定锚点，便于 Playwright 断言当前排序状态。
 // ============================================================================
 
-import { ChevronDown, ChevronUp, ArrowDownUp } from "lucide-react";
+import { ArrowUp, ArrowDown } from "lucide-react";
 import type { SortBy, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,9 @@ const FIELD_LABELS: Record<SortBy, string> = {
 };
 
 /**
- * 渲染一个紧凑的排序下拉 + 方向切换组合，样式与原 cyber-input 保持一致
+ * 渲染一个紧凑的排序下拉 + 方向切换组合。
+ * 左侧的原修饰图标被替换为具有实际功能的切换升降序按钮，
+ * 该按钮包含 ArrowUp 与 ArrowDown 两个箭头，根据正序/倒序状态分别高亮。
  */
 export function SortControl({
   value,
@@ -41,12 +43,48 @@ export function SortControl({
 }: SortControlProps) {
   const fields = availableFields;
 
+  /**
+   * 切换排序方向的处理函数
+   */
+  const handleToggleDirection = () => {
+    onChange({
+      ...value,
+      direction: value.direction === "asc" ? "desc" : "asc",
+    });
+  };
+
   return (
     <div
       data-testid={`sort-control-${testIdScope}`}
       className="flex items-center gap-1 font-mono text-[10px] text-text-secondary select-none"
     >
-      <ArrowDownUp className="w-3 h-3 text-text-muted" />
+      {/* 排序方向切换按钮：直接替换了原左侧的装饰性图标 */}
+      <button
+        data-testid={`sort-direction-${testIdScope}`}
+        type="button"
+        onClick={handleToggleDirection}
+        title={value.direction === "asc" ? "当前正序（上箭头高亮），点击切换为倒序" : "当前倒序（下箭头高亮），点击切换为正序"}
+        className="p-1 rounded border border-border-default bg-surface-2 hover:border-brand-indigo cursor-pointer flex items-center gap-0.5 transition-colors shrink-0"
+      >
+        <ArrowUp
+          className={cn(
+            "w-3 h-3 transition-colors",
+            value.direction === "asc"
+              ? "text-brand-indigo font-bold"
+              : "text-text-muted opacity-30"
+          )}
+        />
+        <ArrowDown
+          className={cn(
+            "w-3 h-3 transition-colors",
+            value.direction === "desc"
+              ? "text-brand-indigo font-bold"
+              : "text-text-muted opacity-30"
+          )}
+        />
+      </button>
+
+      {/* 排序字段下拉选择器 */}
       <select
         data-testid={`sort-by-${testIdScope}`}
         aria-label="排序字段"
@@ -64,24 +102,6 @@ export function SortControl({
           </option>
         ))}
       </select>
-      <button
-        data-testid={`sort-direction-${testIdScope}`}
-        type="button"
-        onClick={() =>
-          onChange({
-            ...value,
-            direction: value.direction === "asc" ? "desc" : "asc",
-          })
-        }
-        title={value.direction === "asc" ? "当前升序，点击切换为降序" : "当前降序，点击切换为升序"}
-        className="p-1 rounded border border-border-default bg-surface-2 hover:border-brand-indigo text-text-secondary hover:text-brand-indigo cursor-pointer flex items-center justify-center transition-colors"
-      >
-        {value.direction === "asc" ? (
-          <ChevronUp className="w-3 h-3" />
-        ) : (
-          <ChevronDown className="w-3 h-3" />
-        )}
-      </button>
     </div>
   );
 }

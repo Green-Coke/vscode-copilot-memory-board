@@ -105,12 +105,13 @@ export function App() {
   }, [repoCollapseDisabled]);
 
   /**
-   * 切换查看仓库级目录：进入时清空当前 session，右侧展示整个仓库的骨架
+   * 切换查看仓库级目录：进入时清空当前 session，右侧/详情展示整个仓库的骨架，
+   * 并将 currentView 设为 entries，以使单栏和双栏布局可以顺利跳转并渲染详情页
    */
   const handleViewRepoFiles = useCallback(() => {
     setSelectedSession(null);
     setViewingRepoFiles(true);
-    setCurrentView("sessions");
+    setCurrentView("entries");
   }, []);
 
   const handleBackToRepos = useCallback(() => {
@@ -123,34 +124,9 @@ export function App() {
 
   const handleBackToSessions = useCallback(() => {
     setSelectedSession(null);
+    setViewingRepoFiles(false);
     setCurrentView("sessions");
   }, []);
-
-  // ---------------------------------------------------------------------------
-  // Breadcrumb for narrow mode
-  // ---------------------------------------------------------------------------
-
-  const breadcrumbItems = [];
-
-  breadcrumbItems.push({
-    label: "Repos",
-    onClick: currentView !== "repos" ? handleBackToRepos : undefined,
-  });
-
-  if (selectedRepo) {
-    breadcrumbItems.push({
-      label: viewingRepoFiles
-        ? `${selectedRepo.name} / 仓库目录`
-        : selectedRepo.name,
-      onClick: currentView === "entries" ? handleBackToSessions : undefined,
-    });
-  }
-
-  if (selectedSession) {
-    breadcrumbItems.push({
-      label: selectedSession.title,
-    });
-  }
 
   // Calculate stats to display in the header
   const stats = {
@@ -179,13 +155,15 @@ export function App() {
   return (
     <AdaptiveLayout
       currentView={currentView}
-      breadcrumbItems={breadcrumbItems}
       stats={stats}
       repoPanelCollapsed={repoPanelCollapsed}
-      setRepoPanelCollapsed={setRepoPanelCollapsed}
       repos={repos ?? []}
       selectedRepo={selectedRepo}
       onSelectRepo={handleSelectRepo}
+      onBackToRepos={handleBackToRepos}
+      onBackToSessions={handleBackToSessions}
+      selectedSession={selectedSession}
+      viewingRepoFiles={viewingRepoFiles}
       repoPanel={
         <Panel
           title="Repositories"
@@ -213,6 +191,7 @@ export function App() {
           title="Sessions"
           icon={<MessageSquare className="w-3.5 h-3.5 text-text-secondary" />}
           leadingAction={repoPanelCollapsed ? repoCollapseLeading : undefined}
+          hideHeaderInNarrow={true}
         >
           <SessionList
             sessions={sessions ?? []}
@@ -237,6 +216,7 @@ export function App() {
         <Panel
           title="Memory Entries"
           icon={<FileText className="w-3.5 h-3.5 text-text-secondary" />}
+          hideHeaderInNarrow={true}
         >
           <MemoryViewer
             entries={entries ?? []}

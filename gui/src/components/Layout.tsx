@@ -22,38 +22,52 @@ import {
 const isVscode = getBridgeEnvironment() === "vscode";
 
 // ---------------------------------------------------------------------------
-// Navigation breadcrumb for narrow mode
+// NarrowHeader for narrow mode (Single column)
 // ---------------------------------------------------------------------------
 
-interface BreadcrumbProps {
-  items: { label: string; onClick?: () => void }[];
+interface NarrowHeaderProps {
+  currentView: ViewMode;
+  selectedRepo: any;
+  selectedSession: any;
+  onBackToRepos?: () => void;
+  onBackToSessions?: () => void;
+  /** 当前是否正处于仓库目录视图 */
+  viewingRepoFiles?: boolean;
 }
 
-function Breadcrumb({ items }: BreadcrumbProps) {
+/**
+ * 窄屏单栏模式下专用的顶部导航返回条。
+ * 解决了面包屑路径过长、容易发生换行或重叠的问题。
+ * - Sessions 视图下显示：[<-] 仓库名
+ * - Entries 视图下显示：[<-] 会话标题
+ */
+function NarrowHeader({
+  currentView,
+  selectedRepo,
+  selectedSession,
+  onBackToRepos,
+  onBackToSessions,
+  viewingRepoFiles = false,
+}: NarrowHeaderProps) {
+  if (currentView === "repos") return null;
+
+  const handleBack = currentView === "entries" ? onBackToSessions : onBackToRepos;
+  const title = currentView === "entries"
+    ? (viewingRepoFiles ? `${selectedRepo?.name} / 仓库目录` : selectedSession?.title)
+    : selectedRepo?.name;
+
   return (
-    <nav className="flex items-center gap-1.5 px-4 py-2.5 border-b border-border-default bg-surface-1/80 backdrop-blur-md z-20 relative">
-      {items.map((item, index) => (
-        <span key={index} className="flex items-center gap-1.5 font-mono text-[11px]">
-          {index > 0 && (
-            <span className="text-text-muted">/</span>
-          )}
-          {item.onClick ? (
-            <button
-              onClick={item.onClick}
-              className="text-brand-indigo hover:text-accent-cyan hover:underline transition-all flex items-center gap-1 cursor-pointer"
-            >
-              {index === 0 && items.length > 1 && (
-                <ChevronLeft className="w-3 h-3" />
-              )}
-              {item.label}
-            </button>
-          ) : (
-            <span className="text-text-secondary font-medium truncate max-w-[150px]">
-              {item.label}
-            </span>
-          )}
-        </span>
-      ))}
+    <nav className="flex items-center gap-2 px-3 py-2 border-b border-border-default bg-surface-1/80 backdrop-blur-md z-20 relative min-h-[40px] shrink-0">
+      <button
+        onClick={handleBack}
+        className="p-1 rounded hover:bg-surface-3 transition-colors text-text-secondary hover:text-brand-indigo cursor-pointer flex items-center justify-center shrink-0"
+        title="返回上一级"
+      >
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+      <span className="text-xs font-bold text-text-primary truncate font-display">
+        {title}
+      </span>
     </nav>
   );
 }
@@ -73,20 +87,37 @@ interface PanelProps {
    * VS Code 模式下，仓库折叠按钮挂在这里，避免浮层与标题图标/文字重叠。
    */
   leadingAction?: ReactNode;
+  /**
+   * 窄屏单栏模式下，是否隐藏该 Panel 的自带头部标题栏（避免与外部窄屏顶部返回头冲突）
+   */
+  hideHeaderInNarrow?: boolean;
 }
 
 /**
  * 面板容器组件：统一管理标题栏（含引导操作位与尾部操作位）与可滚动内容区。
-   * leadingAction 渲染在图标之前，避免与标题文字/图标在左上角发生视觉重叠。
-   */
-export function Panel({ title, icon, children, className, action, leadingAction }: PanelProps) {
+ * leadingAction 渲染在图标之前，避免与标题文字/图标在左上角发生视觉重叠。
+ */
+export function Panel({
+  title,
+  icon,
+  children,
+  className,
+  action,
+  leadingAction,
+  hideHeaderInNarrow = false,
+}: PanelProps) {
   // 这是一个面板容器组件，主要负责统一管理标题栏和可滚动内容区。
   // 若标题是 "Repositories" 且传入了折叠按钮 leadingAction，则只显示折叠按钮，隐藏图标和标题以防左上角发生重叠。
   const shouldHideTitleAndIcon = title === "Repositories" && leadingAction;
 
   return (
     <div className={cn("flex flex-col h-full min-h-0 relative z-10", className)}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-default bg-surface-2/30 backdrop-blur-md">
+      <div
+        className={cn(
+          "flex items-center justify-between px-4 py-3 border-b border-border-default bg-surface-2/30 backdrop-blur-md",
+          hideHeaderInNarrow && "min-[500px]:flex hidden"
+        )}
+      >
         <div className="flex items-center gap-2">
           {/* 渲染引导操作位，如侧栏展开折叠按钮 */}
           {leadingAction}
@@ -123,8 +154,6 @@ interface AppHeaderProps {
     sessions: number;
     entries: number;
   };
-  repoPanelCollapsed?: boolean;
-  setRepoPanelCollapsed?: (collapsed: boolean) => void;
   repos?: any[];
   selectedRepo?: any;
   onSelectRepo?: (repo: any) => void;
@@ -134,13 +163,11 @@ interface AppHeaderProps {
  * 应用程序顶部 Header 组件
  * 包含品牌 Logo、当前仓库切换下拉菜单、仓库栏展开折叠按钮以及数据统计
  */
-export function AppHeader({ 
-  stats, 
-  repoPanelCollapsed, 
-  setRepoPanelCollapsed, 
-  repos, 
-  selectedRepo, 
-  onSelectRepo 
+export function AppHeader({
+  stats,
+  repos,
+  selectedRepo,
+  onSelectRepo
 }: AppHeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -148,23 +175,8 @@ export function AppHeader({
     <header className="relative flex items-center justify-between px-5 py-4 border-b border-border-default bg-surface-1/90 backdrop-blur-md z-30">
       {/* Glow highlight */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-indigo/60 to-transparent" />
-      
-      <div className="flex items-center gap-3">
-        {/* Toggle Button / 侧边仓库栏折叠展开按钮 */}
-        {setRepoPanelCollapsed !== undefined && (
-          <button
-            onClick={() => setRepoPanelCollapsed(!repoPanelCollapsed)}
-            className="p-1.5 rounded hover:bg-surface-3 transition-colors cursor-pointer text-text-secondary hover:text-brand-indigo flex items-center justify-center shrink-0"
-            title={repoPanelCollapsed ? "展开仓库栏" : "折叠仓库栏"}
-          >
-            {repoPanelCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4" />
-            ) : (
-              <PanelLeftClose className="w-4 h-4" />
-            )}
-          </button>
-        )}
 
+      <div className="flex items-center gap-3">
         {/* Glowing Neural Network SVG Logo */}
         <div className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-surface-2 border border-border-default shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)] shrink-0">
           <svg viewBox="0 0 100 100" className="w-6 h-6 text-brand-indigo animate-brain-glow" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -192,10 +204,6 @@ export function AppHeader({
               v1.0.0
             </span>
           </h1>
-          <p className="text-[11px] text-text-secondary font-mono tracking-wide mt-1 uppercase flex items-center gap-1">
-            <Terminal className="w-3.5 h-3.5 text-accent-cyan inline" />
-            GitHub Copilot Memory Indexer
-          </p>
         </div>
       </div>
 
@@ -212,7 +220,7 @@ export function AppHeader({
               <span className="max-w-[220px] truncate">{selectedRepo ? selectedRepo.name : "选择仓库..."}</span>
               <ChevronDown className={cn("w-3.5 h-3.5 text-text-muted transition-transform duration-200", isDropdownOpen && "rotate-180")} />
             </button>
-            
+
             {isDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
@@ -257,23 +265,8 @@ export function AppHeader({
               <span className="font-bold text-text-primary">{stats.repos}</span>{" "}
               <span className="text-text-muted">repos</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <MessageSquare className="w-4 h-4 text-text-muted" />
-              <span className="font-bold text-text-primary">{stats.sessions}</span>{" "}
-              <span className="text-text-muted">sessions</span>
-            </span>
           </div>
         )}
-        <div
-          data-testid="header-connected"
-          className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-surface-2 border border-border-default shrink-0"
-          title="已连接"
-        >
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-        </div>
       </div>
     </header>
   );
@@ -292,14 +285,20 @@ interface LayoutProps {
   repoPanel: ReactNode;
   sessionPanel: ReactNode;
   entryPanel: ReactNode;
-  breadcrumbItems?: BreadcrumbProps["items"];
   currentView: ViewMode;
   stats?: AppHeaderProps["stats"];
   repoPanelCollapsed?: boolean;
-  setRepoPanelCollapsed?: (collapsed: boolean) => void;
   repos?: any[];
   selectedRepo?: any;
   onSelectRepo?: (repo: any) => void;
+  /** 返回仓库列表的回调 */
+  onBackToRepos?: () => void;
+  /** 返回会话列表的回调 */
+  onBackToSessions?: () => void;
+  /** 当前选中的会话信息 */
+  selectedSession?: any;
+  /** 当前是否为仓库级目录视图 */
+  viewingRepoFiles?: boolean;
 }
 
 /**
@@ -332,7 +331,7 @@ export function RepoCollapseButton({
             : "折叠仓库栏"
       }
       className={cn(
-        "p-1.5 rounded transition-colors flex items-center justify-center shrink-0",
+        "p-1.5 rounded transition-colors flex items-center justify-center shrink-0 min-[900px]:flex hidden",
         disabled
           ? "opacity-40 cursor-not-allowed text-text-muted"
           : "hover:bg-surface-3 cursor-pointer text-text-secondary hover:text-brand-indigo"
@@ -357,14 +356,16 @@ export function AdaptiveLayout({
   repoPanel,
   sessionPanel,
   entryPanel,
-  breadcrumbItems,
   currentView,
   stats,
   repoPanelCollapsed = false,
-  setRepoPanelCollapsed,
   repos,
   selectedRepo,
   onSelectRepo,
+  onBackToRepos,
+  onBackToSessions,
+  selectedSession,
+  viewingRepoFiles,
 }: LayoutProps) {
   return (
     <div className="flex flex-col h-full relative overflow-hidden select-none bg-surface-0">
@@ -378,8 +379,6 @@ export function AdaptiveLayout({
       {!isVscode && (
         <AppHeader
           stats={stats}
-          repoPanelCollapsed={repoPanelCollapsed}
-          setRepoPanelCollapsed={setRepoPanelCollapsed}
           repos={repos}
           selectedRepo={selectedRepo}
           onSelectRepo={onSelectRepo}
@@ -428,9 +427,14 @@ export function AdaptiveLayout({
 
       {/* Narrow layout: Single column (<500px / sidebar) */}
       <div className="flex min-[500px]:hidden flex-col flex-1 min-h-0 z-10 relative">
-        {breadcrumbItems && breadcrumbItems.length > 1 && (
-          <Breadcrumb items={breadcrumbItems} />
-        )}
+        <NarrowHeader
+          currentView={currentView}
+          selectedRepo={selectedRepo}
+          selectedSession={selectedSession}
+          onBackToRepos={onBackToRepos}
+          onBackToSessions={onBackToSessions}
+          viewingRepoFiles={viewingRepoFiles}
+        />
         <div className="flex-1 overflow-y-auto min-h-0 bg-surface-1/30">
           {currentView === "repos" && repoPanel}
           {currentView === "sessions" && sessionPanel}

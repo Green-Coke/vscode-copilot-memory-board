@@ -157,7 +157,7 @@ body.vscode-light {
 }
 
 html {
-  font-size: 15px; /* 提升基础字号，让默认信息密度更低、内容更易读 */
+  font-size: 16px; /* 提升基础字号，让默认信息密度更低、内容更易读 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -165,17 +165,22 @@ html {
 /* 桌面端逐级放大，确保大屏下整体比例同步提升 */
 @media (min-width: 1280px) {
   html {
-    font-size: 17px;
+    font-size: 19px;
   }
 }
 @media (min-width: 1600px) {
   html {
-    font-size: 19px;
+    font-size: 22px;
   }
 }
 @media (min-width: 1920px) {
   html {
-    font-size: 22px;
+    font-size: 25px;
+  }
+}
+@media (min-width: 2500px) {
+  html {
+    font-size: 28px;
   }
 }
 
@@ -340,11 +345,21 @@ body.vscode-high-contrast .glass-panel-hover:hover {
    改为更贴近 surrounding surface 的浅灰背景，避免搜索框形成突兀的深色块 */
 /* VS Code 运行环境（包含深色、浅色、高对比度主题）下的输入框背景与边框，
    直接绑定 VS Code 原生自带的主题输入框配色变量，保持输入框与原生面板配色完全和谐一致 */
+/* VS Code 运行环境下的输入框背景与边框：
+   通过半透明滤镜与底层网格背景透射融合，解决深色模式下死黑的问题，
+   能够稍微看到是搜索栏区域即可 */
 body.vscode-dark .cyber-input,
-body.vscode-light .cyber-input,
 body.vscode-high-contrast .cyber-input {
-  background: var(--vscode-input-background, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(4px);
+  color: var(--vscode-input-foreground, var(--ui-text-primary));
+}
+
+body.vscode-light .cyber-input {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  backdrop-filter: blur(4px);
   color: var(--vscode-input-foreground, var(--ui-text-primary));
 }
 
@@ -355,9 +370,14 @@ body.vscode-high-contrast .cyber-input::placeholder {
 }
 
 body.vscode-dark .cyber-input:focus,
-body.vscode-light .cyber-input:focus,
 body.vscode-high-contrast .cyber-input:focus {
-  background: var(--vscode-input-background);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--vscode-focusBorder, var(--color-brand-indigo));
+  box-shadow: 0 0 0 2px var(--vscode-focusBorder, rgba(122, 162, 247, 0.2));
+}
+
+body.vscode-light .cyber-input:focus {
+  background: rgba(0, 0, 0, 0.08);
   border-color: var(--vscode-focusBorder, var(--color-brand-indigo));
   box-shadow: 0 0 0 2px var(--vscode-focusBorder, rgba(122, 162, 247, 0.2));
 }
