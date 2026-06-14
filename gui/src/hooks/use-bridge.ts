@@ -293,3 +293,124 @@ function mergeWorkspace(
     pinnedSessionIds: patch.pinnedSessionIds ?? base.pinnedSessionIds,
   };
 }
+
+// ---------------------------------------------------------------------------
+// 文件操作 Hooks
+// ---------------------------------------------------------------------------
+
+/**
+ * 复制文件/目录到目标文件夹的 hook
+ * @returns 执行复制操作的异步函数
+ */
+export function useCopyEntries() {
+  return useCallback(async (sourcePaths: string[], targetDir: string) => {
+    const response = await sendRequest("copyEntries", { sourcePaths, targetDir });
+    if (response.error) throw new Error(response.error);
+  }, []);
+}
+
+/**
+ * 移动文件/目录到目标文件夹的 hook（也用于剪切+粘贴）
+ * @returns 执行移动操作的异步函数
+ */
+export function useMoveEntries() {
+  return useCallback(async (sourcePaths: string[], targetDir: string) => {
+    const response = await sendRequest("moveEntries", { sourcePaths, targetDir });
+    if (response.error) throw new Error(response.error);
+  }, []);
+}
+
+/**
+ * 重命名文件/目录的 hook（仅同目录改名）
+ * @returns 执行重命名操作的异步函数
+ */
+export function useRenameEntry() {
+  return useCallback(async (entryPath: string, newName: string) => {
+    const response = await sendRequest("renameEntry", { path: entryPath, newName });
+    if (response.error) throw new Error(response.error);
+  }, []);
+}
+
+/**
+ * 删除文件/目录的 hook。默认使用系统回收站。
+ * @returns 执行删除操作的异步函数
+ */
+export function useDeleteEntries() {
+  return useCallback(async (paths: string[], useTrash = true) => {
+    const response = await sendRequest("deleteEntries", { paths, useTrash });
+    if (response.error) throw new Error(response.error);
+  }, []);
+}
+
+/**
+ * 创建目录的 hook
+ * @returns 执行创建目录操作的异步函数
+ */
+export function useCreateDirectory() {
+  return useCallback(async (dirPath: string) => {
+    const response = await sendRequest("createDirectory", { path: dirPath });
+    if (response.error) throw new Error(response.error);
+  }, []);
+}
+
+/**
+ * 导入外部文件的 hook（用于拖拽导入场景）
+ * @returns 执行导入操作的异步函数
+ */
+export function useImportExternalFile() {
+  return useCallback(
+    async (targetDir: string, name: string, contentBase64: string, sizeBytes: number) => {
+      const response = await sendRequest("importExternalFile", {
+        targetDir,
+        name,
+        contentBase64,
+        sizeBytes,
+      });
+      if (response.error) throw new Error(response.error);
+    },
+    []
+  );
+}
+
+/**
+ * 在系统资源管理器中显示文件/目录的 hook
+ * @returns 执行显示操作的异步函数
+ */
+export function useRevealInOs() {
+  return useCallback(async (filePath: string) => {
+    const response = await sendRequest("revealInOs", { path: filePath });
+    if (response.error) throw new Error(response.error);
+  }, []);
+}
+
+/**
+ * 复制文件路径到系统剪贴板的 hook
+ * @returns 执行复制路径操作的异步函数
+ */
+export function useCopyPath() {
+  return useCallback(
+    async (filePath: string, relative = false, workspaceId?: string) => {
+      const response = await sendRequest("copyPathToClipboard", {
+        path: filePath,
+        relative,
+        workspaceId,
+      });
+      if (response.error) throw new Error(response.error);
+    },
+    []
+  );
+}
+
+/**
+ * 读取系统剪贴板中文件列表的 hook（用于外部粘贴）。
+ * 仅 Windows 支持，其他平台返回 unsupported。
+ * @returns 执行读取操作的异步函数
+ */
+export function useReadExternalClipboardFiles() {
+  return useCallback(async (): Promise<{ paths: string[]; unsupported?: boolean }> => {
+    const response = await sendRequest("readExternalClipboardFiles", {});
+    if (response.error) throw new Error(response.error);
+    const payload = response.payload as { paths: string[]; unsupported?: boolean };
+    return { paths: payload.paths ?? [], unsupported: payload.unsupported };
+  }, []);
+}

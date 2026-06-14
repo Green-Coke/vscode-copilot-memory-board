@@ -50,6 +50,25 @@ export type {
   AnyPushMessage,
   OpenFileRequest,
   OpenFileResponse,
+  // 文件操作协议类型
+  CopyEntriesRequest,
+  CopyEntriesResponse,
+  MoveEntriesRequest,
+  MoveEntriesResponse,
+  RenameEntryRequest,
+  RenameEntryResponse,
+  DeleteEntriesRequest,
+  DeleteEntriesResponse,
+  CreateDirectoryRequest,
+  CreateDirectoryResponse,
+  ImportExternalFileRequest,
+  ImportExternalFileResponse,
+  RevealInOsRequest,
+  RevealInOsResponse,
+  CopyPathToClipboardRequest,
+  CopyPathToClipboardResponse,
+  ReadExternalClipboardFilesRequest,
+  ReadExternalClipboardFilesResponse,
 } from "./protocol.js";
 
 // Protocol Utilities

@@ -20,11 +20,21 @@ import {
 import type {
   AnyRequest,
   OpenFileRequest,
+  CopyEntriesRequest,
+  MoveEntriesRequest,
+  RenameEntryRequest,
+  DeleteEntriesRequest,
+  CreateDirectoryRequest,
+  ImportExternalFileRequest,
+  RevealInOsRequest,
+  CopyPathToClipboardRequest,
   ResponseMessage,
   UiPreferences,
   Workspace,
   WorkspaceState,
 } from "@memory-board/core";
+import { readClipboardFilePaths } from "./clipboard-files";
+
 
 /**
  * 全局 UI 偏好在 globalState 中的 key
@@ -374,6 +384,125 @@ export class MemoryBoardWebviewCore {
           break;
         }
 
+        // ---------------------------------------------------------------
+        // 文件操作协议：复制/移动/重命名/删除/创建目录/导入/系统显示/路径复制/外部剪贴板
+        // ---------------------------------------------------------------
+
+        case MessageTypes.COPY_ENTRIES: {
+          const { sourcePaths, targetDir } = message.payload as CopyEntriesRequest["payload"];
+          await this.copyEntries(sourcePaths, targetDir, webview);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.MOVE_ENTRIES: {
+          const { sourcePaths, targetDir } = message.payload as MoveEntriesRequest["payload"];
+          await this.moveEntries(sourcePaths, targetDir, webview);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.RENAME_ENTRY: {
+          const { path: entryPath, newName } = message.payload as RenameEntryRequest["payload"];
+          await this.renameEntry(entryPath, newName, webview);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.DELETE_ENTRIES: {
+          const { paths, useTrash } = message.payload as DeleteEntriesRequest["payload"];
+          await this.deleteEntries(paths, useTrash, webview);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.CREATE_DIRECTORY: {
+          const { path: dirPath } = message.payload as CreateDirectoryRequest["payload"];
+          await vscode.workspace.fs.createDirectory(vscode.Uri.file(dirPath));
+          await this.refresh(webview);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.IMPORT_EXTERNAL_FILE: {
+          const { targetDir, name, contentBase64, sizeBytes } =
+            message.payload as ImportExternalFileRequest["payload"];
+          await this.importExternalFile(targetDir, name, contentBase64, sizeBytes, webview);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.REVEAL_IN_OS: {
+          const { path: revealPath } = message.payload as RevealInOsRequest["payload"];
+          // 使用 VS Code 内置命令在系统资源管理器中显示文件
+          await vscode.commands.executeCommand(
+            "revealFileInOS",
+            vscode.Uri.file(revealPath)
+          );
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.COPY_PATH_TO_CLIPBOARD: {
+          const { path: copyPath, relative, workspaceId } =
+            message.payload as CopyPathToClipboardRequest["payload"];
+          await this.copyPathToClipboard(copyPath, relative, workspaceId);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.READ_EXTERNAL_CLIPBOARD_FILES: {
+          // 读取系统剪贴板中的文件列表（仅 Windows 支持）
+          const result = await readClipboardFilePaths();
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: { paths: result.paths, unsupported: result.unsupported },
+            error: null,
+          };
+          break;
+        }
+
         default:
           response = {
             type: msgType,
@@ -642,6 +771,205 @@ export class MemoryBoardWebviewCore {
     // 路径存在：打开真实的物理文件
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
     await vscode.window.showTextDocument(doc, { preview: true });
+  }
+
+  // ---------------------------------------------------------------------------
+  // 文件操作辅助方法
+  // ---------------------------------------------------------------------------
+
+  /** 外部导入文件大小上限：30MB */
+  private static readonly MAX_IMPORT_SIZE = 30 * 1024 * 1024;
+
+  /**
+   * 复制文件/目录到目标文件夹。
+   * 使用 vscode.workspace.fs.copy 逐一复制源路径到目标目录下。
+   * 若目标已存在同名文件，自动添加 " - Copy" 后缀避免覆盖。
+   *
+   * @param sourcePaths 源文件/目录的绝对路径列表
+   * @param targetDir 目标文件夹的绝对路径
+   * @param webview 操作完成后需要推送刷新的 webview
+   */
+  private async copyEntries(
+    sourcePaths: string[],
+    targetDir: string,
+    webview: vscode.Webview
+  ): Promise<void> {
+    for (const src of sourcePaths) {
+      const baseName = path.basename(src);
+      let targetPath = path.join(targetDir, baseName);
+      // 同名文件自动加后缀避免覆盖
+      targetPath = await this.ensureUniquePath(targetPath);
+      await vscode.workspace.fs.copy(
+        vscode.Uri.file(src),
+        vscode.Uri.file(targetPath),
+        { overwrite: false }
+      );
+    }
+    await this.refresh(webview);
+  }
+
+  /**
+   * 移动文件/目录到目标文件夹。
+   * 使用 vscode.workspace.fs.rename 实现移动。
+   * 包含循环移动检测：targetDir 不能在 sourcePath 子树下。
+   *
+   * @param sourcePaths 源文件/目录的绝对路径列表
+   * @param targetDir 目标文件夹的绝对路径
+   * @param webview 操作完成后需要推送刷新的 webview
+   */
+  private async moveEntries(
+    sourcePaths: string[],
+    targetDir: string,
+    webview: vscode.Webview
+  ): Promise<void> {
+    for (const src of sourcePaths) {
+      // 循环移动检测：不能把父目录移到自己的子目录下
+      const rel = path.relative(src, targetDir);
+      if (!rel.startsWith("..") && !path.isAbsolute(rel)) {
+        throw new Error(`不能将文件夹移动到其自身子目录下：${path.basename(src)} → ${targetDir}`);
+      }
+      const baseName = path.basename(src);
+      let targetPath = path.join(targetDir, baseName);
+      targetPath = await this.ensureUniquePath(targetPath);
+      await vscode.workspace.fs.rename(
+        vscode.Uri.file(src),
+        vscode.Uri.file(targetPath),
+        { overwrite: false }
+      );
+    }
+    await this.refresh(webview);
+  }
+
+  /**
+   * 重命名文件/目录（仅同目录改名）。
+   *
+   * @param entryPath 文件/目录的绝对路径
+   * @param newName 新名称（不含路径分隔符）
+   * @param webview 操作完成后需要推送刷新的 webview
+   */
+  private async renameEntry(
+    entryPath: string,
+    newName: string,
+    webview: vscode.Webview
+  ): Promise<void> {
+    const dir = path.dirname(entryPath);
+    const newPath = path.join(dir, newName);
+    await vscode.workspace.fs.rename(
+      vscode.Uri.file(entryPath),
+      vscode.Uri.file(newPath),
+      { overwrite: false }
+    );
+    await this.refresh(webview);
+  }
+
+  /**
+   * 删除文件/目录。默认使用系统回收站（useTrash: true）。
+   *
+   * @param paths 要删除的文件/目录绝对路径列表
+   * @param useTrash 是否使用系统回收站
+   * @param webview 操作完成后需要推送刷新的 webview
+   */
+  private async deleteEntries(
+    paths: string[],
+    useTrash: boolean,
+    webview: vscode.Webview
+  ): Promise<void> {
+    for (const p of paths) {
+      await vscode.workspace.fs.delete(vscode.Uri.file(p), {
+        recursive: true,
+        useTrash,
+      });
+    }
+    await this.refresh(webview);
+  }
+
+  /**
+   * 导入外部文件：将 base64 编码的文件内容写入目标目录。
+   * 双重校验文件大小上限（30MB），GUI 端和扩展端各校验一次。
+   *
+   * @param targetDir 目标目录绝对路径
+   * @param name 文件名
+   * @param contentBase64 文件内容的 base64 编码
+   * @param sizeBytes 文件原始大小（字节），用于二次校验
+   * @param webview 操作完成后需要推送刷新的 webview
+   */
+  private async importExternalFile(
+    targetDir: string,
+    name: string,
+    contentBase64: string,
+    sizeBytes: number,
+    webview: vscode.Webview
+  ): Promise<void> {
+    // 二次校验文件大小上限
+    if (sizeBytes > MemoryBoardWebviewCore.MAX_IMPORT_SIZE) {
+      throw new Error(
+        `文件过大（${(sizeBytes / 1024 / 1024).toFixed(1)}MB），上限 30MB：${name}`
+      );
+    }
+    const content = Buffer.from(contentBase64, "base64");
+    let targetPath = path.join(targetDir, name);
+    targetPath = await this.ensureUniquePath(targetPath);
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.file(targetPath),
+      new Uint8Array(content)
+    );
+    await this.refresh(webview);
+  }
+
+  /**
+   * 复制文件路径到系统剪贴板。
+   * 支持绝对路径和相对路径（相对于 workspaceStorage 根目录）模式。
+   *
+   * @param filePath 文件的绝对路径
+   * @param relative 是否为相对路径模式
+   * @param workspaceId 工作区 ID（计算相对路径时使用）
+   */
+  private async copyPathToClipboard(
+    filePath: string,
+    relative: boolean,
+    workspaceId?: string
+  ): Promise<void> {
+    let textToCopy = filePath;
+    if (relative && workspaceId && this.workspaceStoragePath) {
+      // 计算相对于 workspaceStorage/<workspaceId> 的路径
+      const wsRoot = path.join(this.workspaceStoragePath, workspaceId);
+      const rel = path.relative(wsRoot, filePath);
+      textToCopy = rel;
+    }
+    await vscode.env.clipboard.writeText(textToCopy);
+  }
+
+  /**
+   * 确保文件路径唯一：若同名文件已存在，则自动追加 " - Copy" / " - Copy 2" 等后缀。
+   * 这样避免 overwrite: false 时抛异常，提供更友好的用户体验。
+   *
+   * @param targetPath 期望的目标路径
+   * @returns 保证唯一的目标路径
+   */
+  private async ensureUniquePath(targetPath: string): Promise<string> {
+    try {
+      await vscode.workspace.fs.stat(vscode.Uri.file(targetPath));
+    } catch {
+      // 文件不存在，直接使用原路径
+      return targetPath;
+    }
+    // 文件已存在，追加后缀
+    const dir = path.dirname(targetPath);
+    const ext = path.extname(targetPath);
+    const baseName = path.basename(targetPath, ext);
+    let counter = 1;
+    let candidate: string;
+    do {
+      const suffix = counter === 1 ? " - Copy" : ` - Copy ${counter}`;
+      candidate = path.join(dir, `${baseName}${suffix}${ext}`);
+      counter++;
+      try {
+        await vscode.workspace.fs.stat(vscode.Uri.file(candidate));
+      } catch {
+        return candidate;
+      }
+    } while (counter < 100); // 安全上限
+    return candidate;
   }
 }
 

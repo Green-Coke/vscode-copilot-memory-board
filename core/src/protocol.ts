@@ -139,6 +139,132 @@ export interface GetCurrentWorkspaceRequest {
 }
 
 /**
+ * 复制文件/目录到目标文件夹的请求
+ */
+export interface CopyEntriesRequest {
+  type: "copyEntries";
+  requestId: string;
+  payload: {
+    /** 源文件/目录的绝对路径列表 */
+    sourcePaths: string[];
+    /** 目标文件夹的绝对路径 */
+    targetDir: string;
+  };
+}
+
+/**
+ * 移动文件/目录到目标文件夹的请求
+ */
+export interface MoveEntriesRequest {
+  type: "moveEntries";
+  requestId: string;
+  payload: {
+    /** 源文件/目录的绝对路径列表 */
+    sourcePaths: string[];
+    /** 目标文件夹的绝对路径 */
+    targetDir: string;
+  };
+}
+
+/**
+ * 重命名文件/目录的请求（仅同目录改名）
+ */
+export interface RenameEntryRequest {
+  type: "renameEntry";
+  requestId: string;
+  payload: {
+    /** 文件/目录的绝对路径 */
+    path: string;
+    /** 新名称（不含路径分隔符） */
+    newName: string;
+  };
+}
+
+/**
+ * 删除文件/目录的请求
+ */
+export interface DeleteEntriesRequest {
+  type: "deleteEntries";
+  requestId: string;
+  payload: {
+    /** 要删除的文件/目录绝对路径列表 */
+    paths: string[];
+    /** 是否使用系统回收站 */
+    useTrash: boolean;
+  };
+}
+
+/**
+ * 创建目录的请求
+ */
+export interface CreateDirectoryRequest {
+  type: "createDirectory";
+  requestId: string;
+  payload: {
+    /** 要创建的目录绝对路径 */
+    path: string;
+  };
+}
+
+/**
+ * 导入外部文件（拖拽导入）的请求。
+ * GUI 通过 HTML5 DataTransfer 读取文件内容后，以 base64 传给扩展端写入磁盘。
+ */
+export interface ImportExternalFileRequest {
+  type: "importExternalFile";
+  requestId: string;
+  payload: {
+    /** 目标目录绝对路径 */
+    targetDir: string;
+    /** 文件名 */
+    name: string;
+    /** 文件内容的 base64 编码 */
+    contentBase64: string;
+    /** 文件原始大小（字节），用于扩展端二次校验 30MB 上限 */
+    sizeBytes: number;
+  };
+}
+
+/**
+ * 在系统资源管理器中显示文件/目录的请求
+ */
+export interface RevealInOsRequest {
+  type: "revealInOs";
+  requestId: string;
+  payload: {
+    /** 文件/目录的绝对路径 */
+    path: string;
+  };
+}
+
+/**
+ * 复制文件路径到系统剪贴板的请求
+ */
+export interface CopyPathToClipboardRequest {
+  type: "copyPathToClipboard";
+  requestId: string;
+  payload: {
+    /** 文件/目录的绝对路径 */
+    path: string;
+    /** 是否为相对路径模式 */
+    relative: boolean;
+    /** 工作区 ID（计算相对路径时使用） */
+    workspaceId?: string;
+  };
+}
+
+/**
+ * 读取系统剪贴板中文件列表的请求。
+ * 用于实现"外部资源管理器复制文件 → 插件内粘贴"场景。
+ * 仅 Windows 支持；macOS/Linux 返回 unsupported。
+ */
+export interface ReadExternalClipboardFilesRequest {
+  type: "readExternalClipboardFiles";
+  requestId: string;
+  payload: Record<string, never>;
+}
+
+/**
  * Union of all possible request message types.
  */
 export type AnyRequest =
@@ -150,7 +276,16 @@ export type AnyRequest =
   | GetWorkspaceStateRequest
   | SetWorkspaceStateRequest
   | OpenFileRequest
-  | GetCurrentWorkspaceRequest;
+  | GetCurrentWorkspaceRequest
+  | CopyEntriesRequest
+  | MoveEntriesRequest
+  | RenameEntryRequest
+  | DeleteEntriesRequest
+  | CreateDirectoryRequest
+  | ImportExternalFileRequest
+  | RevealInOsRequest
+  | CopyPathToClipboardRequest
+  | ReadExternalClipboardFilesRequest;
 
 // ---------------------------------------------------------------------------
 // Response Payloads (Host → GUI)
@@ -255,6 +390,101 @@ export interface GetCurrentWorkspaceResponse {
 }
 
 /**
+ * 复制文件/目录的响应
+ */
+export interface CopyEntriesResponse {
+  type: "copyEntries";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
+ * 移动文件/目录的响应
+ */
+export interface MoveEntriesResponse {
+  type: "moveEntries";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
+ * 重命名文件/目录的响应
+ */
+export interface RenameEntryResponse {
+  type: "renameEntry";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
+ * 删除文件/目录的响应
+ */
+export interface DeleteEntriesResponse {
+  type: "deleteEntries";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
+ * 创建目录的响应
+ */
+export interface CreateDirectoryResponse {
+  type: "createDirectory";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
+ * 导入外部文件的响应
+ */
+export interface ImportExternalFileResponse {
+  type: "importExternalFile";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
+ * 在系统资源管理器中显示的响应
+ */
+export interface RevealInOsResponse {
+  type: "revealInOs";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
+ * 复制路径到剪贴板的响应
+ */
+export interface CopyPathToClipboardResponse {
+  type: "copyPathToClipboard";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
+ * 读取系统剪贴板中文件列表的响应
+ */
+export interface ReadExternalClipboardFilesResponse {
+  type: "readExternalClipboardFiles";
+  requestId: string;
+  payload: {
+    /** 剪贴板中的文件绝对路径列表 */
+    paths: string[];
+    /** 当前平台是否不支持此功能 */
+    unsupported?: boolean;
+  };
+  error: string | null;
+}
+
+/**
  * Union of all possible response message types.
  */
 export type AnyResponse =
@@ -266,7 +496,16 @@ export type AnyResponse =
   | GetWorkspaceStateResponse
   | SetWorkspaceStateResponse
   | OpenFileResponse
-  | GetCurrentWorkspaceResponse;
+  | GetCurrentWorkspaceResponse
+  | CopyEntriesResponse
+  | MoveEntriesResponse
+  | RenameEntryResponse
+  | DeleteEntriesResponse
+  | CreateDirectoryResponse
+  | ImportExternalFileResponse
+  | RevealInOsResponse
+  | CopyPathToClipboardResponse
+  | ReadExternalClipboardFilesResponse;
 
 // ---------------------------------------------------------------------------
 // Push Messages (Host → GUI, unsolicited)
@@ -304,6 +543,16 @@ export const MessageTypes = {
   ON_WORKSPACES_CHANGED: "onWorkspacesChanged",
   OPEN_FILE: "openFile",
   GET_CURRENT_WORKSPACE: "getCurrentWorkspace",
+  // 文件操作协议
+  COPY_ENTRIES: "copyEntries",
+  MOVE_ENTRIES: "moveEntries",
+  RENAME_ENTRY: "renameEntry",
+  DELETE_ENTRIES: "deleteEntries",
+  CREATE_DIRECTORY: "createDirectory",
+  IMPORT_EXTERNAL_FILE: "importExternalFile",
+  REVEAL_IN_OS: "revealInOs",
+  COPY_PATH_TO_CLIPBOARD: "copyPathToClipboard",
+  READ_EXTERNAL_CLIPBOARD_FILES: "readExternalClipboardFiles",
 } as const;
 
 /**

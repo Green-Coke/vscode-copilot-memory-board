@@ -22,6 +22,7 @@ import { WorkspaceList } from "@/components/WorkspaceList";
 import { SessionList } from "@/components/SessionList";
 import { MemoryViewer } from "@/components/MemoryViewer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FileClipboardProvider } from "@/hooks/use-file-clipboard";
 import { FolderGit2, MessageSquare, FileText } from "lucide-react";
 
 export function App() {
@@ -187,6 +188,7 @@ export function App() {
   );
 
   return (
+    <FileClipboardProvider>
     <AdaptiveLayout
       currentView={currentView}
       stats={stats}
@@ -290,5 +292,6 @@ export function App() {
         </Panel>
       }
     />
+    </FileClipboardProvider>
   );
 }

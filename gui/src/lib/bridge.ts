@@ -411,6 +411,32 @@ async function handleStandaloneRequest(
         error: null,
       };
     }
+
+    // 文件操作协议：standalone 模式不支持写操作，统一返回 not-implemented 错误
+    case "copyEntries":
+    case "moveEntries":
+    case "renameEntry":
+    case "deleteEntries":
+    case "createDirectory":
+    case "importExternalFile":
+    case "revealInOs":
+    case "copyPathToClipboard": {
+      const fileOpReq = request as { type: string; requestId: string };
+      return {
+        type: fileOpReq.type,
+        requestId: fileOpReq.requestId,
+        payload: {},
+        error: "Standalone 浏览器模式不支持文件写操作",
+      };
+    }
+    case "readExternalClipboardFiles": {
+      return {
+        type: "readExternalClipboardFiles",
+        requestId: request.requestId,
+        payload: { paths: [], unsupported: true },
+        error: null,
+      };
+    }
     default: {
       // TS 在 default 分支里会把 request 收缩为 never；这里手工安全以字符串提取 type
       const req = request as { type: string; requestId: string };
