@@ -108,16 +108,36 @@ export function useSessionsByWorkspace(
  * Fetch memory entries for a specific session.
  *
  * @param sessionId - The session ID to fetch entries for, or null to skip.
+ * @param workspaceId - 可选的 workspaceId；standalone HTTP 通道需要此参数才能定位到	 *   workspaceStorage/<ws>/.../memories/<session>。VS Code 扩展端不传时会回退到
+ *   currentWorkspaceId。
  */
 export function useMemoryContent(
-  sessionId: string | null
+  sessionId: string | null,
+  workspaceId?: string | null
 ): AsyncState<MemoryEntry[]> {
   return useAsyncData<MemoryEntry[]>(async () => {
     if (!sessionId) return [];
-    const response = await sendRequest("readMemoryContent", { sessionId });
+    const payload: { sessionId: string; workspaceId?: string } = { sessionId };
+    if (workspaceId) {
+      payload.workspaceId = workspaceId;
+    }
+    const response = await sendRequest("readMemoryContent", payload);
     if (response.error) throw new Error(response.error);
     return (response.payload as { entries: MemoryEntry[] }).entries;
-  }, [sessionId]);
+  }, [sessionId, workspaceId]);
+}
+
+/**
+ * "当前激活的工作区"。VS Code 扩展返回真实当前工作区；standalone 返回 undefined。
+ * GUI 可以用它来自动选中当前工作区（仅首次，用户手动改选后不覆盖）。
+ */
+export function useCurrentWorkspace(): AsyncState<Workspace | null> {
+  return useAsyncData<Workspace | null>(async () => {
+    const response = await sendRequest("getCurrentWorkspace", {});
+    if (response.error) throw new Error(response.error);
+    const ws = (response.payload as { workspace?: Workspace }).workspace;
+    return ws ?? null;
+  }, []);
 }
 
 // ---------------------------------------------------------------------------

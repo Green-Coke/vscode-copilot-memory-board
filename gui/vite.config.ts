@@ -2,10 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
+import { memoryBoardDevPlugin } from "./vite-plugin-memory-board";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  // dev server 内嵌中间件：standalone 模式下浏览器通过 /api/__memory_board/* 读取真实磁盘
+  plugins: [react(), tailwindcss(), memoryBoardDevPlugin()],
 
   // Use relative paths so the built assets work inside a VS Code webview
   base: "./",

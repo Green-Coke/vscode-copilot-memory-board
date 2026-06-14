@@ -4,20 +4,20 @@ import {
   ChevronDown, ChevronRight 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MockFsNode } from "@/lib/mock-filetree";
+import type { FileTreeNode } from "@/lib/file-tree-types";
 
 /**
  * 单个文件树节点组件 Props
  */
 interface FileTreeNodeProps {
   /** 文件树节点数据 */
-  node: MockFsNode;
+  node: FileTreeNode;
   /** 当前节点的层级深度（用于计算缩进） */
   depth: number;
   /** 当前选中文件的节点 */
-  selectedNode: MockFsNode | null;
+  selectedNode: FileTreeNode | null;
   /** 选中文件时的回调函数；同时也会在点击目录时被调用以通知上层清空预览 */
-  onSelectFile: (node: MockFsNode) => void;
+  onSelectFile: (node: FileTreeNode) => void;
   /** 节点完整路径（用于唯一标识与展开状态追踪） */
   currentPath: string;
 }
@@ -135,11 +135,11 @@ function FileTreeNode({
  */
 interface FileTreeProps {
   /** 根目录节点列表 */
-  data: MockFsNode[];
+  data: FileTreeNode[];
   /** 当前选中的节点 */
-  selectedNode: MockFsNode | null;
+  selectedNode: FileTreeNode | null;
   /** 选中文件时的回调 */
-  onSelectFile: (node: MockFsNode) => void;
+  onSelectFile: (node: FileTreeNode) => void;
 }
 
 /**

@@ -128,6 +128,17 @@ export interface OpenFileRequest {
 }
 
 /**
+ * 获取“当前激活工作区请求” 。
+ * 扩展端运行时仅 VS Code 有活跨的“当前工作区”概念；standalone 网页返回 null。
+ * 响应 payload workspace 可能是 undefined（表示未在 workspace 内打开扩展 / standalone 模式）。
+ */
+export interface GetCurrentWorkspaceRequest {
+  type: "getCurrentWorkspace";
+  requestId: string;
+  payload: Record<string, never>;
+}
+
+/**
  * Union of all possible request message types.
  */
 export type AnyRequest =
@@ -138,7 +149,8 @@ export type AnyRequest =
   | SetUiPreferencesRequest
   | GetWorkspaceStateRequest
   | SetWorkspaceStateRequest
-  | OpenFileRequest;
+  | OpenFileRequest
+  | GetCurrentWorkspaceRequest;
 
 // ---------------------------------------------------------------------------
 // Response Payloads (Host → GUI)
@@ -230,6 +242,19 @@ export interface OpenFileResponse {
 }
 
 /**
+ * “当前激活工作区”响应。
+ * workspace===undefined 表示未检测到当前工作区（standalone / 无 storageUri）。
+ */
+export interface GetCurrentWorkspaceResponse {
+  type: "getCurrentWorkspace";
+  requestId: string;
+  payload: {
+    workspace?: Workspace;
+  };
+  error: string | null;
+}
+
+/**
  * Union of all possible response message types.
  */
 export type AnyResponse =
@@ -240,7 +265,8 @@ export type AnyResponse =
   | SetUiPreferencesResponse
   | GetWorkspaceStateResponse
   | SetWorkspaceStateResponse
-  | OpenFileResponse;
+  | OpenFileResponse
+  | GetCurrentWorkspaceResponse;
 
 // ---------------------------------------------------------------------------
 // Push Messages (Host → GUI, unsolicited)
@@ -277,6 +303,7 @@ export const MessageTypes = {
   SET_WORKSPACE_STATE: "setWorkspaceState",
   ON_WORKSPACES_CHANGED: "onWorkspacesChanged",
   OPEN_FILE: "openFile",
+  GET_CURRENT_WORKSPACE: "getCurrentWorkspace",
 } as const;
 
 /**

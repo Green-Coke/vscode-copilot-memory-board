@@ -9,7 +9,8 @@ import { Search, X, MessageSquare, Terminal, Eye, EyeOff } from "lucide-react";
 import { FileTree } from "@/components/FileTree";
 import { FilePreview } from "@/components/FilePreview";
 import { SortControl } from "@/components/SortControl";
-import { getMockFileTree, getMockWorkspaceFileTree, type MockFsNode } from "@/lib/mock-filetree";
+import type { FileTreeNode } from "@/lib/file-tree-types";
+import { useFileTree } from "@/hooks/use-file-tree";
 import { sortFileTree } from "@/lib/sort-utils";
 import { getBridgeEnvironment, sendRequest } from "@/lib/bridge";
 
@@ -17,15 +18,15 @@ import { getBridgeEnvironment, sendRequest } from "@/lib/bridge";
  * MemoryViewer 组件 Props 接口定义
  */
 interface MemoryViewerProps {
-  /** 备用的内存条目数据（用于兼容旧版接口） */
+  /** 从 bridge readMemoryContent 拉到的真实条目；MemoryViewer 直接根据它构造文件树 */
   entries: MemoryEntry[];
   /** 是否正在加载中 */
   loading?: boolean;
   /** 当前选中的会话标题 */
   sessionTitle?: string;
-  /** 当前选中的会话 ID，用于加载 mock 文件树 */
+  /** 当前选中的会话 ID（仅用于唯一标识 / 调试69696965*/
   sessionId?: string;
-  /** 工作区级目录视图信号：传入 workspaceId 时切换为工作区骨架文件树 */
+  /** 受保留以避免 App.tsx 调用点全局重构；后续可移除 */
   workspaceId?: string;
   /** 工作区名称，用于 workspace 模式下的标题展示 */
   workspaceName?: string;
@@ -51,7 +52,7 @@ interface MemoryViewerProps {
  * @param query 搜索关键词
  * @returns 过滤后的文件树节点列表，如果文件夹内含有匹配的文件则保留文件夹
  */
-function filterFileTree(nodes: MockFsNode[], query: string): MockFsNode[] {
+function filterFileTree(nodes: FileTreeNode[], query: string): FileTreeNode[] {
   if (!query.trim()) return nodes;
   const lowerQuery = query.toLowerCase();
 
@@ -68,18 +69,17 @@ function filterFileTree(nodes: MockFsNode[], query: string): MockFsNode[] {
       }
       return null;
     })
-    .filter((node): node is MockFsNode => node !== null);
+    .filter((node): node is FileTreeNode => node !== null);
 }
 
 /**
- * 内存浏览器组件 - 现已改造为 VS Code 风格文件管理器
- * 选中 Session 后，拉取对应的 mock 文件树，渲染左侧树状结构与右侧文件预览
+ * 内存浏览器组件 - 从 bridge 拉到的真实 entries 构造文件树，渲染左侧树状结构与右侧文件预览
+ * VS Code 模式下点击文件走 openFile bridge（由扩展端打开真实磁盘路径）。
  */
 export function MemoryViewer({
+  entries,
   loading,
   sessionTitle,
-  sessionId,
-  workspaceId,
   workspaceName,
   viewMode = "session",
   previewEnabled,
@@ -91,15 +91,15 @@ export function MemoryViewer({
 }: MemoryViewerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   // 当前选中的节点：可能是文件或目录；目录/禁用预览时右侧展示空态
-  const [selectedNode, setSelectedNode] = useState<MockFsNode | null>(null);
-  const [fileTree, setFileTree] = useState<MockFsNode[]>([]);
+  const [selectedNode, setSelectedNode] = useState<FileTreeNode | null>(null);
 
-  // 根据视图模式选择 mock 文件树数据源：
-  // - workspace 模式：加载整个工作区的骨架目录，默认预览 README.md
-  // - session 模式：加载该会话涉及的文件子集，默认预览首个文本文件
+  // 从调用方传入的真实 entries 构造文件树（useFileTree 内部记忆化）
+  const fileTree = useFileTree(entries);
+
+  // 当 entries / viewMode 变化时重置搜索词与默认选中
   useEffect(() => {
-    // 深度优先搜索（DFS）寻找文件树中第一个文本文件
-    const findFirstTextFile = (nodes: MockFsNode[]): MockFsNode | null => {
+    // 深度优先搜索文件树中第一个文本文件
+    const findFirstTextFile = (nodes: FileTreeNode[]): FileTreeNode | null => {
       for (const node of nodes) {
         if (node.type === "file" && node.fileType === "text") {
           return node;
@@ -112,44 +112,14 @@ export function MemoryViewer({
       return null;
     };
 
-    // 按名称查找文件节点，优先匹配 README.md
-    const findByName = (nodes: MockFsNode[], name: string): MockFsNode | null => {
-      for (const node of nodes) {
-        if (node.type === "file" && node.name.toLowerCase() === name.toLowerCase()) {
-          return node;
-        }
-        if (node.type === "dir" && node.children) {
-          const res = findByName(node.children, name);
-          if (res) return res;
-        }
-      }
-      return null;
-    };
-
     const isVsCode = getBridgeEnvironment() === "vscode";
-
-    if (viewMode === "workspace" && workspaceId) {
-      const tree = getMockWorkspaceFileTree(workspaceId);
-      setFileTree(tree);
-      setSearchQuery("");
-      // 处理目录节点或预览被关掉时，不需要默认选中文件。VS Code 模式下不在此加载默认文件。
-      const defaultFile = !isVsCode && previewEnabled && previewVisible
-        ? (findByName(tree, "README.md") ?? findFirstTextFile(tree))
-        : null;
-      setSelectedNode(defaultFile);
-    } else if (sessionId) {
-      const tree = getMockFileTree(sessionId);
-      setFileTree(tree);
-      setSearchQuery("");
-      const defaultFile = !isVsCode && previewEnabled && previewVisible
-        ? findFirstTextFile(tree)
-        : null;
-      setSelectedNode(defaultFile);
-    } else {
-      setFileTree([]);
-      setSelectedNode(null);
-    }
-  }, [viewMode, workspaceId, sessionId, previewEnabled, previewVisible]);
+    setSearchQuery("");
+    // VS Code 模式下默认不选中（点击才会打开）；standalone 下默认预览首个文本文件
+    const defaultFile = !isVsCode && previewEnabled && previewVisible
+      ? findFirstTextFile(fileTree)
+      : null;
+    setSelectedNode(defaultFile);
+  }, [fileTree, previewEnabled, previewVisible]);
 
   // 根据搜索关键字过滤后再按 fileTreeSort 递归排序
   const processedTree = useMemo(() => {
@@ -162,16 +132,18 @@ export function MemoryViewer({
    * - 文件：更新 selectedNode（预览仅在 previewEnabled && previewVisible 时实际可见）
    * - 目录：更新 selectedNode 为目录，预览层会自动展示"已选中目录"空态
    */
-  const handleSelectNode = (node: MockFsNode) => {
+  const handleSelectNode = (node: FileTreeNode) => {
     setSelectedNode(node);
 
     const isVsCode = getBridgeEnvironment() === "vscode";
     if (node.type === "file" && isVsCode) {
-      // 触发 VS Code 宿主端打开该文件，不走本地的 File Preview
+      // 触发 VS Code 宿主端打开该文件。node.absolutePath 是真实磁盘路径（Phase 1 修复后）
       sendRequest("openFile", {
         name: node.name,
         content: node.content || "",
-        fileType: node.fileType || "text"
+        fileType: node.fileType || "text",
+        // 传递磁盘路径：文件不存在会让扩展端弹错误提示而不是创建 Untitled
+        path: node.absolutePath,
       }).catch((err) => {
         console.error("Failed to open file in VS Code:", err);
       });

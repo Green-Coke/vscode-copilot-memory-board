@@ -1,14 +1,14 @@
 import React from "react";
 import { FileText, FileImage, ShieldAlert, FileCode2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MockFsNode } from "@/lib/mock-filetree";
+import type { FileTreeNode } from "@/lib/file-tree-types";
 
 /**
  * 文件预览组件 Props
  */
 interface FilePreviewProps {
   /** 当前选中的文件节点，为 null 时展示占位提示 */
-  node: MockFsNode | null;
+  node: FileTreeNode | null;
   /** 是否处于禁用状态（预览总开关关闭）；为 true 时展示对应的禁用占位 */
   disabled?: boolean;
   /** 关闭当前预览面板的回调；缺省时不显示关闭按钮 */

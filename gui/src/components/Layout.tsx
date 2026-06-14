@@ -9,7 +9,7 @@
 
 import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/utils";
-import { getBridgeEnvironment } from "@/lib/bridge";
+import { getBridgeEnvironment, readScanTarget, writeScanTarget, type ScanTarget } from "@/lib/bridge";
 import {
   ChevronLeft, FolderGit2, MessageSquare, Terminal,
   ChevronDown, PanelLeftClose, PanelLeftOpen
@@ -170,6 +170,21 @@ export function AppHeader({
   onSelectWorkspace
 }: AppHeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // Standalone 扫描目标：Stable / Insiders。仅 standalone 模式渲染（VS Code 模式直接走真实 storageUri）
+  const [scanTarget, setScanTarget] = useState<ScanTarget>(() => readScanTarget());
+
+  /**
+   * 切换 Stable / Insiders：写入 localStorage 后强制 reload。
+   * 触发 reload 是为了让所有 hooks（useWorkspaces / useSessions / useMemoryContent）重新走 fetch，
+   * 让用户立刻看到切换效果，而不是手动点击刷新。
+   */
+  const handleToggleScanTarget = () => {
+    const next: ScanTarget = scanTarget === "stable" ? "insiders" : "stable";
+    writeScanTarget(next);
+    setScanTarget(next);
+    // 给用户一个机会看到提示，再 reload
+    setTimeout(() => window.location.reload(), 50);
+  };
 
   return (
     <header className="relative flex items-center justify-between px-5 py-4 border-b border-border-default bg-surface-1/90 backdrop-blur-md z-30">
@@ -267,6 +282,20 @@ export function AppHeader({
             </span>
           </div>
         )}
+
+        {/* Standalone 扫描目标切换：Stable ↔ ↻ Insiders；仅 standalone 模式渲染 */}
+        <button
+          data-testid="scan-target-toggle"
+          type="button"
+          onClick={handleToggleScanTarget}
+          title={scanTarget === "stable"
+            ? "当前扫描 VS Code 正式版 (Code)；点击切换到 Insiders"
+            : "当前扫描 VS Code Insiders；点击切换到正式版 (Code)"}
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-2 border border-border-default hover:border-brand-indigo transition-colors cursor-pointer text-text-primary font-mono text-[11px]"
+        >
+          <Terminal className="w-3.5 h-3.5 text-brand-indigo" />
+          <span>{scanTarget === "stable" ? "Stable" : "Insiders"}</span>
+        </button>
       </div>
     </header>
   );

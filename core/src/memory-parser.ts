@@ -215,7 +215,8 @@ export class MemoryParser {
         content,
         category: "unknown",
         timestamp: stat ? toIso(stat.mtime) : new Date(0).toISOString(),
-        sourceFile: entry.name,
+        // 存储完整绝对路径，便于 bridge openFile 调用 vscode.workspace.openTextDocument(Uri.file(path))
+        sourceFile: filePath,
       });
     }
 
@@ -272,6 +273,9 @@ export class MemoryParser {
 
   /**
    * 读取 chatSessions/<sessionId>.jsonl 提取 sessionId / createdAt / customTitle / 首条用户消息。
+   *
+   * 实测磁盘真实路径：`workspaceStorage/<workspaceId>/chatSessions/<sessionId>.jsonl`
+   * (注意：chatSessions 目录与 GitHub.copilot-chat 目录是平级兄弟，**不在** GitHub.copilot-chat 下)
    */
   private async tryReadSessionMetadata(
     workspaceId: string,
@@ -280,7 +284,6 @@ export class MemoryParser {
     const jsonlPath = path.join(
       this.metadataBasePath,
       workspaceId,
-      "GitHub.copilot-chat",
       "chatSessions",
       `${sessionId}.jsonl`,
     );

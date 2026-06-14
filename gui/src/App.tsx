@@ -5,13 +5,15 @@
 // complete Memory Board UI. Manages navigation state for adaptive layout.
 // ============================================================================
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Workspace, Session } from "@memory-board/core";
+import { DEFAULT_SESSION_IDS } from "@memory-board/core";
 import { initBridge } from "@/lib/bridge";
 import {
   useWorkspaces,
   useSessionsByWorkspace,
   useMemoryContent,
+  useCurrentWorkspace,
   useUiPreferences,
   useWorkspaceState,
 } from "@/hooks/use-bridge";
@@ -39,6 +41,10 @@ export function App() {
   // 标记右侧当前是否展示 "工作区级目录" 视图；选中某个 session 时会被清空
   const [viewingWorkspaceFiles, setViewingWorkspaceFiles] = useState(false);
 
+  // 标记用户是否手动选过 workspace。仅首次启动时让 currentWorkspace 自动选中；
+  // 后续用户点了任意 workspace 后置 true，避免被覆盖
+  const userPickedWorkspaceRef = useRef(false);
+
   // ---------------------------------------------------------------------------
   // UI 偏好与工作区状态（来自持久层）
   // - uiPreferences.enableFilePreview：全局偏好，控制文件预览能力总开关
@@ -53,11 +59,36 @@ export function App() {
   // ---------------------------------------------------------------------------
 
   const { data: workspaces, loading: workspacesLoading } = useWorkspaces();
+  // “当前激活的工作区”（VS Code 模式返回真实值；standalone 返回 null）
+  const { data: currentWs } = useCurrentWorkspace();
+  // 该 ref 用于让自动选中只在 1) 开局启动时；2) currentWs 有值且未超过启动期间生效，避免 race
+  const selectedWorkspaceId = selectedWorkspace?.id ?? null;
+
+  // 当 workspaces 加载完成且用户还没选过，默认进入 currentWs（或任选首个）。
+  useEffect(() => {
+    if (userPickedWorkspaceRef.current) return;
+    if (!workspaces || workspaces.length === 0) return;
+    // 优先选 currentWs，其次是首个列表项
+    const target = (currentWs && workspaces.find((w) => w.id === currentWs.id)) || workspaces[0];
+    if (!target) return;
+    if (selectedWorkspace && selectedWorkspace.id === target.id) return;
+    setSelectedWorkspace(target);
+    setViewingWorkspaceFiles(false);
+    setCurrentView("sessions");
+  }, [workspaces, currentWs, selectedWorkspace]);
+
   const { data: sessions, loading: sessionsLoading } = useSessionsByWorkspace(
-    selectedWorkspace?.id ?? null
+    selectedWorkspaceId
   );
+
+  // 当处于“工作区级目录"视图时，拉 _repo_ session 的 memory；否则拉选中 session 的内容。
+  // workspaceId 传为 standalone HTTP 通道必须（VS Code 扩展端会回退到 currentWorkspaceId）。
+  const memorySessionId = viewingWorkspaceFiles
+    ? DEFAULT_SESSION_IDS.REPO
+    : selectedSession?.id ?? null;
   const { data: entries, loading: entriesLoading } = useMemoryContent(
-    selectedSession?.id ?? null
+    memorySessionId,
+    selectedWorkspaceId
   );
 
   // ---------------------------------------------------------------------------
@@ -65,6 +96,7 @@ export function App() {
   // ---------------------------------------------------------------------------
 
   const handleSelectWorkspace = useCallback((workspace: Workspace) => {
+    userPickedWorkspaceRef.current = true;
     setSelectedWorkspace(workspace);
     setSelectedSession(null);
     setViewingWorkspaceFiles(false);
@@ -115,7 +147,7 @@ export function App() {
   }, []);
 
   const handleBackToWorkspaces = useCallback(() => {
-    setSelectedWorkspace(null);
+    // 切回工作区列表视图，但不清空 selectedWorkspace（保留上下文 / currentWorkspace 默认选中项）
     setSelectedSession(null);
     setViewingWorkspaceFiles(false);
     setCurrentView("workspaces");

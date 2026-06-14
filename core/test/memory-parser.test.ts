@@ -99,7 +99,9 @@ function createMockWorkspaceStorage(baseDir: string) {
   fs.writeFileSync(path.join(session2Dir, "plan.md"), "# Plan: memory文件加载\n\n加载计划...", "utf8");
 
   // chatSessions 目录（jsonl 元数据）
-  const chatSessionsDir = path.join(wsDir, "GitHub.copilot-chat", "chatSessions");
+  // 注意：实测磁盘上 chatSessions 与 GitHub.copilot-chat 是平级兄弟目录（都在 workspaceId 下），
+  // 不能把 chatSessions 放在 GitHub.copilot-chat 下面。
+  const chatSessionsDir = path.join(wsDir, "chatSessions");
   fs.mkdirSync(chatSessionsDir, { recursive: true });
   fs.writeFileSync(path.join(chatSessionsDir, `${TEST_SESSION_UUID}.jsonl`), JSONL_CONTENT_SESSION_1, "utf8");
   fs.writeFileSync(path.join(chatSessionsDir, `${TEST_SESSION_UUID_2}.jsonl`), JSONL_CONTENT_SESSION_2, "utf8");
@@ -263,15 +265,19 @@ describe("MemoryParser.readMemoryContent", () => {
     expect(contents.some((c) => c.includes("WebView Fix"))).toBe(true);
   });
 
-  it("repo session 的 MemoryEntry 的 sourceFile 应为文件名", async () => {
+  it("repo session 的 MemoryEntry 的 sourceFile 应为绝对路径", async () => {
     const parser = new MemoryParser({ basePath: tmpDir });
     const entries = await parser.readMemoryContent(
       DEFAULT_SESSION_IDS.REPO,
       WORKSPACE_ID,
     );
     const sourceFiles = entries.map((e) => e.sourceFile);
-    expect(sourceFiles).toContain("gui-mock-data-flow.md");
-    expect(sourceFiles).toContain("vscode-webview-fix.md");
+    // sourceFile 必须是完整绝对路径，供扩展端用 vscode.Uri.file() 打开
+    expect(sourceFiles.some((p) => p?.endsWith("gui-mock-data-flow.md"))).toBe(true);
+    expect(sourceFiles.some((p) => p?.endsWith("vscode-webview-fix.md"))).toBe(true);
+    sourceFiles.forEach((p) => {
+      expect(path.isAbsolute(p)).toBe(true);
+    });
   });
 
   it("普通 session 应读取到 1 个 MemoryEntry（plan.md）", async () => {
@@ -281,7 +287,9 @@ describe("MemoryParser.readMemoryContent", () => {
       WORKSPACE_ID,
     );
     expect(entries).toHaveLength(1);
-    expect(entries[0].sourceFile).toBe("plan.md");
+    // sourceFile 是绝对路径，但末尾应为 plan.md
+    expect(entries[0].sourceFile?.endsWith("plan.md")).toBe(true);
+    expect(path.isAbsolute(entries[0].sourceFile)).toBe(true);
     expect(entries[0].content).toContain("重命名");
   });
 

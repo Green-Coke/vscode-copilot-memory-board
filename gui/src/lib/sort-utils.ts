@@ -8,7 +8,7 @@
 // ============================================================================
 
 import type { SortOption } from "@memory-board/core";
-import type { MockFsNode } from "@/lib/mock-filetree";
+import type { FileTreeNode } from "@/lib/file-tree-types";
 
 /**
  * 通用排序输入：需要可获取名称和可选时间字段
@@ -145,10 +145,10 @@ function makeComparatorForT<T>(
  * 目录与文件混合排序，保持原有父子结构不变。
  */
 export function sortFileTree(
-  nodes: readonly MockFsNode[],
+  nodes: readonly FileTreeNode[],
   option: SortOption
-): MockFsNode[] {
-  const comparator = makeComparator<MockFsNode>(option);
+): FileTreeNode[] {
+  const comparator = makeComparator<FileTreeNode>(option);
   return [...nodes]
     .map((node) => {
       if (node.type === "dir" && node.children?.length) {

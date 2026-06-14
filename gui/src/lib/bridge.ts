@@ -2,8 +2,14 @@
 // Bridge — Environment-Agnostic Message Transport
 // ============================================================================
 // Provides a unified API for sending requests and receiving responses
-// between the GUI and the host environment. Automatically detects the
-// runtime (VS Code Webview, Electron IPC, or standalone browser with mock).
+// between the GUI and the host environment.
+//
+// 两种真实运行时通道（standalone 模式不再有 mock 分支）：
+//   - VS Code Webview → postMessage 到 extension host
+//   - Standalone 浏览器 → fetch 到 Vite dev server 中间件 /api/__memory_board/*
+//
+// 单纯 UI 偏好 / 工作区状态的持久化（localStorage）在 standalone 下保留；
+// 状态协议、openFile 等在 standalone 下走特定回退逻辑。
 // ============================================================================
 
 import type {
@@ -120,6 +126,35 @@ const UI_PREFERENCES_STORAGE_KEY = "memory-board:ui-preferences";
 const WORKSPACE_STATE_STORAGE_KEY = "memory-board:workspace-state";
 
 /**
+ * Standalone 模式下扫描目标选择（stable / insiders）的 localStorage key
+ * 仅 standalone 模式生效；VS Code 模式直接走真实 storageUri，不需要此选项。
+ */
+const SCAN_TARGET_STORAGE_KEY = "memory-board:scan-target";
+
+/**
+ * Standalone 模式下，用户选择的扫描目标（点击 Layout 中的切换按钮时更新）。
+ * 'stable' = Code；'insiders' = Code - Insiders。
+ */
+export type ScanTarget = "stable" | "insiders";
+
+export function readScanTarget(): ScanTarget {
+  try {
+    const raw = localStorage.getItem(SCAN_TARGET_STORAGE_KEY);
+    return raw === "insiders" ? "insiders" : "stable";
+  } catch {
+    return "stable";
+  }
+}
+
+export function writeScanTarget(target: ScanTarget): void {
+  try {
+    localStorage.setItem(SCAN_TARGET_STORAGE_KEY, target);
+  } catch (err) {
+    console.warn("[Bridge] 写入 scanTarget 失败:", err);
+  }
+}
+
+/**
  * 深合并部分字段到目标对象，用于 Partial<WorkspaceState> 合并
  * 仅处理一层字段，嵌套对象（如 SortOption）整体覆盖即可
  */
@@ -203,46 +238,129 @@ function cloneDefaultWorkspaceState(): WorkspaceState {
 }
 
 // ---------------------------------------------------------------------------
-// Mock Data for Standalone Mode
+// Standalone 模式：通过 Vite dev server 中间件读真实磁盘
+// ---------------------------------------------------------------------------
+// 浏览器无法直接读 fs，所以 standalone 模式不再硬编码 mock 数据，
+// 改为 fetch 到 vite-plugin-memory-board 暴露的 HTTP 端点。
+// 端点路径与 URL query（insiders / override）见 vite-plugin-memory-board.ts。
+//
+// 仍然在 standalone 模式下保留的「本地通道」：
+// - getUiPreferences / setUiPreferences → localStorage
+// - getWorkspaceState / setWorkspaceState → localStorage
+// - openFile：浏览器没有编辑器，直接 resolve 空成功
 // ---------------------------------------------------------------------------
 
-async function handleMockRequest(
+/** Vite 中间件暴露的 API 前缀（与 vite-plugin-memory-board 一致） */
+const STANDALONE_API_PREFIX = "/api/__memory_board";
+
+/**
+ * 构造 standalone 模式下的 fetch URL；自动追加 insiders query。
+ */
+function buildStandaloneUrl(pathSegments: string[]): string {
+  const target = readScanTarget();
+  const joined = pathSegments.map(encodeURIComponent).join("/");
+  const query = target === "insiders" ? "?insiders=true" : "";
+  return `${STANDALONE_API_PREFIX}/${joined}${query}`;
+}
+
+/**
+ * 在 standalone 模式下处理一条请求：要么走 HTTP fetch（数据型请求），
+ * 要么走 localStorage（UI 偏好/工作区状态）、要么直接 resolve（openFile）。
+ */
+async function handleStandaloneRequest(
   request: AnyRequest
 ): Promise<ResponseMessage> {
-  // Standalone 浏览器模式无法访问本地磁盘上的 Copilot 内存目录，
-  // 因此这里直接返回内置的纯前端 mock 数据，让仓库 / 会话 / 文件树可被完整演示。
-  const { MOCK_WORKSPACES, MOCK_SESSIONS, MOCK_ENTRIES } = await import(
-    "@/lib/mock-data"
-  );
-
+  // 数据型请求走 fetch
   switch (request.type) {
     case "getWorkspaces": {
-      return {
-        type: "getWorkspaces",
-        requestId: request.requestId,
-        payload: { workspaces: MOCK_WORKSPACES },
-        error: null,
-      };
+      try {
+        const r = await fetch(buildStandaloneUrl(["workspaces"]));
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const payload = (await r.json()) as { workspaces: unknown };
+        return {
+          type: "getWorkspaces",
+          requestId: request.requestId,
+          payload: payload as ResponseMessage["payload"],
+          error: null,
+        };
+      } catch (err) {
+        return {
+          type: "getWorkspaces",
+          requestId: request.requestId,
+          payload: { workspaces: [] },
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
     case "getSessionsByWorkspace": {
-      const sessions = MOCK_SESSIONS.filter(
-        (s) => s.workspaceId === request.payload.workspaceId
-      );
-      return {
-        type: "getSessionsByWorkspace",
-        requestId: request.requestId,
-        payload: { sessions },
-        error: null,
-      };
+      const { workspaceId } = request.payload as { workspaceId: string };
+      try {
+        const r = await fetch(
+          buildStandaloneUrl(["workspaces", workspaceId, "sessions"])
+        );
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const payload = (await r.json()) as { sessions: unknown };
+        return {
+          type: "getSessionsByWorkspace",
+          requestId: request.requestId,
+          payload: payload as ResponseMessage["payload"],
+          error: null,
+        };
+      } catch (err) {
+        return {
+          type: "getSessionsByWorkspace",
+          requestId: request.requestId,
+          payload: { sessions: [] },
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
     case "readMemoryContent": {
-      const entries = MOCK_ENTRIES.filter(
-        (e) => e.sessionId === request.payload.sessionId
-      );
+      const payload = request.payload as { sessionId: string; workspaceId?: string };
+      // standalone 模式下 hook 通常不会带 workspaceId，扩展端 hook 会带 currentWorkspaceId；
+      // 这里若无 workspaceId，浏览器可降级为查询前端缓存中 selectedWorkspace.id（bridge 已经tschaft 解耦），
+      // 实际生产场景希望上层 hook 始终带上 workspaceId。
+      if (!payload.workspaceId) {
+        return {
+          type: "readMemoryContent",
+          requestId: request.requestId,
+          payload: { entries: [] },
+          error: null,
+        };
+      }
+      try {
+        const r = await fetch(
+          buildStandaloneUrl([
+            "workspaces",
+            payload.workspaceId,
+            "sessions",
+            payload.sessionId,
+            "memory",
+          ])
+        );
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const resp = (await r.json()) as { entries: unknown };
+        return {
+          type: "readMemoryContent",
+          requestId: request.requestId,
+          payload: resp as ResponseMessage["payload"],
+          error: null,
+        };
+      } catch (err) {
+        return {
+          type: "readMemoryContent",
+          requestId: request.requestId,
+          payload: { entries: [] },
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+    case "getCurrentWorkspace": {
+      // standalone 模式无「当前工作区」概念；返回 undefined，GUI 会回退到「显示工作区列表 / 自动选第一个」
       return {
-        type: "readMemoryContent",
+        type: "getCurrentWorkspace",
         requestId: request.requestId,
-        payload: { entries },
+        payload: {},
         error: null,
       };
     }
@@ -255,7 +373,6 @@ async function handleMockRequest(
       };
     }
     case "setUiPreferences": {
-      // mergePartial 后整体回写，保证新加字段不丢
       const current = readUiPreferences();
       const next: UiPreferences = { ...current, ...request.payload.preferences };
       writeUiPreferences(next);
@@ -295,12 +412,13 @@ async function handleMockRequest(
       };
     }
     default: {
-      const unknownRequest = request as AnyRequest;
+      // TS 在 default 分支里会把 request 收缩为 never；这里手工安全以字符串提取 type
+      const req = request as { type: string; requestId: string };
       return {
-        type: unknownRequest.type,
-        requestId: unknownRequest.requestId,
+        type: req.type,
+        requestId: req.requestId,
         payload: {},
-        error: `Unknown message type: ${unknownRequest.type}`,
+        error: `Unknown message type: ${req.type}`,
       };
     }
   }
@@ -346,9 +464,9 @@ export function sendRequest<T extends AnyRequest>(
   const requestId = generateRequestId();
   const request = { type, requestId, payload } as AnyRequest;
 
-  // In standalone mode, use mock handler
+  // In standalone mode, route through Vite dev server HTTP fetch
   if (currentEnvironment === "standalone") {
-    return handleMockRequest(request);
+    return handleStandaloneRequest(request);
   }
 
   // In VS Code mode, post message to extension host

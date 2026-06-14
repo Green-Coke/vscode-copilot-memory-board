@@ -152,6 +152,10 @@ export class MemoryBoardWebviewCore {
       return undefined;
     }
     const workspaceId = parts[wsIdx + 1];
+    if (!workspaceId) {
+      // parts[wsIdx + 1] 在数组尾后访问会返回 undefined；这里提前返回避免类型缩窄问题
+      return undefined;
+    }
     const workspaceStoragePath = parts.slice(0, wsIdx + 1).join(path.sep);
     // Insiders / stable 的路径中“Code - Insiders” 与 "Code" 差异已被 storageUri 本身反映，无需重复处理
     return { workspaceStoragePath, workspaceId };
@@ -191,7 +195,7 @@ export class MemoryBoardWebviewCore {
   public async refresh(webview: vscode.Webview): Promise<void> {
     try {
       this.workspacesCache = undefined; // 强制刷新
-      const workspaces = await this.scanWorkspacesCached();
+      const workspaces = await this.scanWorkspacesCached(true);
       webview.postMessage({
         type: MessageTypes.ON_WORKSPACES_CHANGED,
         requestId: "",
@@ -204,20 +208,24 @@ export class MemoryBoardWebviewCore {
   }
 
   /**
-   * 优先返回缓存；缓存未命中时根据 currentWorkspaceId 智能选择扫描范围：
-   * - 仅有 currentWorkspaceId 时只扫当前工作区（较快）
-   * - 用户主动请求全扫时调用 scanAllWorkspaces 并写入缓存
+   * 优先返回缓存；缓存未命中时扫描 workspaceStorage 下**全部**子目录。
+   *
+   * 设计决策（2026-06）：默认全扫。原因：
+   * - “只显示一个工作区” 是用户而言的反直觉表现（他们在多个项目里用过 Copilot Memory）；
+   * - scanWorkspaces() 本身已能过滤掉“没有 memories 目录” 的 workspaceId，性能可接受；
+   * - currentWorkspaceId 仍会在 getCurrentWorkspace 协议中作为“默认选中项” 返回。
+   *
+   * @param forceRefresh 强制清空缓存后重新扫描（由 refresh 命令调用时传 true）
    */
-  private async scanWorkspacesCached(forceAll = false): Promise<Workspace[]> {
+  private async scanWorkspacesCached(forceRefresh = false): Promise<Workspace[]> {
     if (!this.parser) {
       return [];
     }
-    if (this.workspacesCache && !forceAll) {
+    if (this.workspacesCache && !forceRefresh) {
       return this.workspacesCache;
     }
-    const workspaces = forceAll
-      ? await this.parser.scanWorkspaces()
-      : await this.parser.scanCurrentWorkspace();
+    // 全部扫描，覆盖所有 workspaceStorage/<hex32> 子目录
+    const workspaces = await this.parser.scanWorkspaces();
     this.workspacesCache = workspaces;
     return workspaces;
   }
@@ -332,6 +340,22 @@ export class MemoryBoardWebviewCore {
             type: message.type,
             requestId: message.requestId,
             payload: { state: next },
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.GET_CURRENT_WORKSPACE: {
+          // 默认进入当前 workspace（仅 VS Code 模式有此概念；standalone 不支持时 workspace 为 undefined）
+          // 需要扫描后从缓存里查找 currentWorkspaceId 对应的 Workspace 对象
+          const all = await this.scanWorkspacesCached();
+          const currentWs = this.currentWorkspaceId
+            ? all.find((w) => w.id === this.currentWorkspaceId) ?? undefined
+            : undefined;
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: { workspace: currentWs },
             error: null,
           };
           break;
@@ -584,65 +608,39 @@ export class MemoryBoardWebviewCore {
 
   /**
    * 在 VS Code 编辑器中打开并显示文件内容。
-   * 如果提供了真实的物理文件路径且文件存在，则直接打开；
-   * 否则创建一个包含初始内容的 Untitled 虚拟文本编辑器并在 VS Code 中展示。
    *
-   * @param name 文件名（用于推断语法高亮的语言）
-   * @param content 文件文本内容
-   * @param filePath 物理文件绝对路径（如果有的话）
+   * 行为约定（2026-06 调整）：
+   * - 若 `filePath` 为空 / undefined：弹错误提示「Memory 文件未指定路径」但不打开任何文件。
+   * - 若 `filePath` 在磁盘上不存在：弹 `Memory 文件不存在：<path>`，**不再兜底创建 Untitled 文档**。
+   * - 若 `filePath` 存在：用 `openTextDocument(Uri.file(path))` 打开物理文件，并 `showTextDocument`。
+   *
+   * @param name 文件名（用于错误提示）
+   * @param _content 文件文本内容（保留参数以兼容协议，已不再用于 Untitled 兜底）
+   * @param filePath 物理文件绝对路径
    */
   private async openDocumentInVsCode(
     name: string,
-    content: string,
+    _content: string,
     filePath?: string
   ): Promise<void> {
-    // 如果物理路径存在且对应文件在磁盘上确实存在，则直接打开物理文件
-    if (filePath && fs.existsSync(filePath)) {
-      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-      await vscode.window.showTextDocument(doc, { preview: true });
+    // 没有提供路径：不打开文件，仅提示
+    if (!filePath || filePath.trim().length === 0) {
+      await vscode.window.showErrorMessage(
+        `Memory 文件未指定路径：${name}`,
+      );
       return;
     }
 
-    // 根据文件后缀推断 VS Code 的语言模式 (Language ID)
-    const ext = path.extname(name).toLowerCase();
-    let language: string | undefined;
-    switch (ext) {
-      case ".ts":
-        language = "typescript";
-        break;
-      case ".tsx":
-        language = "typescriptreact";
-        break;
-      case ".js":
-        language = "javascript";
-        break;
-      case ".jsx":
-        language = "javascriptreact";
-        break;
-      case ".json":
-        language = "json";
-        break;
-      case ".md":
-        language = "markdown";
-        break;
-      case ".css":
-        language = "css";
-        break;
-      case ".html":
-        language = "html";
-        break;
-      case ".txt":
-        language = "plaintext";
-        break;
-      default:
-        language = undefined;
+    // 物理路径在磁盘上不存在：提示错误，不创建 Untitled
+    if (!fs.existsSync(filePath)) {
+      await vscode.window.showErrorMessage(
+        `Memory 文件不存在：${filePath}`,
+      );
+      return;
     }
 
-    // 创建 Untitled 类型的虚拟文本编辑器并打开
-    const doc = await vscode.workspace.openTextDocument({
-      content: content,
-      language: language,
-    });
+    // 路径存在：打开真实的物理文件
+    const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
     await vscode.window.showTextDocument(doc, { preview: true });
   }
 }
