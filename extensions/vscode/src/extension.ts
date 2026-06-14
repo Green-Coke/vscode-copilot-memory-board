@@ -11,6 +11,7 @@ import * as vscode from "vscode";
 import {
   MemoryBoardViewProvider,
   MemoryBoardPanelManager,
+  outputChannel,
 } from "./webview-provider";
 
 /**
@@ -29,7 +30,10 @@ const ACTIVE_LOCATION_CONTEXT_KEY = "memoryBoard.activeLocation";
  * @param context VS Code 扩展运行上下文，用于注册订阅与访问持久状态
  */
 export function activate(context: vscode.ExtensionContext): void {
-  console.log("[Memory Board] Extension activating...");
+  // 向输出面板管道中追加日志
+  outputChannel.appendLine("[Memory Board] Extension activating...");
+  // 静默展示该输出通道，不抢夺当前焦点，使用户可以随时从输出窗口下拉菜单中找到 Memory Board 日志
+  outputChannel.show(true);
 
   // 实例化共享的 WebviewViewProvider，用于同时服务 A、C、D 三个物理容器
   const provider = new MemoryBoardViewProvider(context.extensionUri, context);
@@ -38,15 +42,6 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       "memoryBoard.mainView",
-      provider,
-      {
-        webviewOptions: {
-          retainContextWhenHidden: true,
-        },
-      }
-    ),
-    vscode.window.registerWebviewViewProvider(
-      "memoryBoard.secondaryView",
       provider,
       {
         webviewOptions: {
@@ -120,17 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
     await vscode.commands.executeCommand("workbench.action.moveEditorToFirstGroup");
   };
 
-  /**
-   * 3) 移动至辅助侧栏 (C)
-   * 销毁编辑器 WebviewPanel 实例，更新状态激活辅助侧栏中的 WebviewView，随后强制展开并聚焦该辅助侧栏容器。
-   */
-  const moveToSecondarySidebar = async () => {
-    panelManager.close();
-    await updateLocation("secondarySidebar");
-    await vscode.commands.executeCommand(
-      "workbench.view.extension.memory-board-secondary-sidebar-container"
-    );
-  };
+
 
   /**
    * 4) 移动至面板栏 (D)
@@ -160,17 +145,13 @@ export function activate(context: vscode.ExtensionContext): void {
     await vscode.commands.executeCommand("workbench.action.moveEditorToNewWindow");
   };
 
-  // 注册上述 5 个跳转命令，并把它们添加进 context 的订阅销毁清单中
+  // 注册上述 4 个跳转命令，并把它们添加进 context 的订阅销毁清单中
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "memoryBoard.moveToPrimarySidebar",
       moveToPrimarySidebar
     ),
     vscode.commands.registerCommand("memoryBoard.moveToEditor", moveToEditor),
-    vscode.commands.registerCommand(
-      "memoryBoard.moveToSecondarySidebar",
-      moveToSecondarySidebar
-    ),
     vscode.commands.registerCommand("memoryBoard.moveToPanel", moveToPanel),
     vscode.commands.registerCommand("memoryBoard.moveToNewWindow", moveToNewWindow)
   );

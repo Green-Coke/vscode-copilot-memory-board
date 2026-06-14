@@ -50,6 +50,9 @@ interface FileTreeContextMenuProps {
 /**
  * 右键上下文菜单项组件：统一的菜单项样式
  */
+/**
+ * 右键上下文菜单项组件：统一的菜单项样式，微调 padding 与 gap 以防图标与快捷键紧贴边框
+ */
 function MenuItem({
   icon: Icon,
   label,
@@ -70,7 +73,7 @@ function MenuItem({
       disabled={disabled}
       onSelect={onSelect}
       className={cn(
-        "flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+        "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
         "outline-none select-none transition-colors",
         disabled
           ? "text-text-muted/40 cursor-not-allowed"
@@ -113,7 +116,7 @@ export function FileTreeContextMenu({
       <ContextMenu.Portal>
         <ContextMenu.Content
           className={cn(
-            "min-w-[180px] py-1.5 px-1",
+            "min-w-[180px] py-1.5 px-1.5",
             "rounded-lg border border-border-default/60",
             "bg-surface-1/95 backdrop-blur-md",
             "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",

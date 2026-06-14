@@ -45,6 +45,7 @@ export function SortControl({
 
   /**
    * 切换排序方向的处理函数
+   * 将升序切换为降序，或降序切换为升序
    */
   const handleToggleDirection = () => {
     onChange({
@@ -58,7 +59,28 @@ export function SortControl({
       data-testid={`sort-control-${testIdScope}`}
       className="flex items-center gap-1 font-mono text-[10px] text-text-secondary select-none"
     >
-      {/* 排序方向切换按钮：直接替换了原左侧的装饰性图标 */}
+      {/* 排序字段下拉选择器：优先显示在左侧 */}
+      <select
+        data-testid={`sort-by-${testIdScope}`}
+        aria-label="排序字段"
+        value={value.by}
+        onChange={(e) => {
+          const next = e.target.value as SortBy;
+          // 切换字段时的默认排序方向优化：
+          // 名称(name)默认升序 asc (符合 A-Z 人类习惯)
+          // 时间(createdAt/updatedAt)默认降序 desc (优先展示最新记录)
+          onChange({ by: next, direction: next === "name" ? "asc" : "desc" });
+        }}
+        className="bg-surface-2 border border-border-default rounded px-1.5 py-1 text-text-primary cursor-pointer outline-none focus:border-brand-indigo transition-colors"
+      >
+        {fields.map((field) => (
+          <option key={field} value={field}>
+            {FIELD_LABELS[field]}
+          </option>
+        ))}
+      </select>
+
+      {/* 排序方向切换按钮：放置在右侧 */}
       <button
         data-testid={`sort-direction-${testIdScope}`}
         type="button"
@@ -83,25 +105,6 @@ export function SortControl({
           )}
         />
       </button>
-
-      {/* 排序字段下拉选择器 */}
-      <select
-        data-testid={`sort-by-${testIdScope}`}
-        aria-label="排序字段"
-        value={value.by}
-        onChange={(e) => {
-          const next = e.target.value as SortBy;
-          // 切换字段时默认升序，保持可预期
-          onChange({ by: next, direction: "asc" });
-        }}
-        className="bg-surface-2 border border-border-default rounded px-1.5 py-1 text-text-primary cursor-pointer outline-none focus:border-brand-indigo transition-colors"
-      >
-        {fields.map((field) => (
-          <option key={field} value={field}>
-            {FIELD_LABELS[field]}
-          </option>
-        ))}
-      </select>
     </div>
   );
 }

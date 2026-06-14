@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Workspace, Session } from "@memory-board/core";
 import { DEFAULT_SESSION_IDS } from "@memory-board/core";
-import { initBridge } from "@/lib/bridge";
+import { initBridge, getBridgeEnvironment } from "@/lib/bridge";
 import {
   useWorkspaces,
   useSessionsByWorkspace,
@@ -23,6 +23,7 @@ import { SessionList } from "@/components/SessionList";
 import { MemoryViewer } from "@/components/MemoryViewer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FileClipboardProvider } from "@/hooks/use-file-clipboard";
+import { SortControl } from "@/components/SortControl";
 import { FolderGit2, MessageSquare, FileText } from "lucide-react";
 
 export function App() {
@@ -52,7 +53,7 @@ export function App() {
   // - uiPreferences.enableFilePreview：全局偏好，控制文件预览能力总开关
   // - workspaceState：按工作区维度保存排序、预览面板展开状态与钉选集合
   // ---------------------------------------------------------------------------
-  const { preferences, update: updateUiPreferences } = useUiPreferences();
+  const { preferences, showRedirectSelector, isAgy, update: updateUiPreferences } = useUiPreferences();
   const { state: workspaceState, update: updateWorkspaceState } =
     useWorkspaceState();
 
@@ -66,18 +67,41 @@ export function App() {
   // 该 ref 用于让自动选中只在 1) 开局启动时；2) currentWs 有值且未超过启动期间生效，避免 race
   const selectedWorkspaceId = selectedWorkspace?.id ?? null;
 
-  // 当 workspaces 加载完成且用户还没选过，默认进入 currentWs（或任选首个）。
+  // 仅在官方 VS Code 模式下且当前工作区（currentWs）存在时才默认进入。
+  // 若处于非官方 VS Code 环境（如第三方 IDE 重定向选择器开启或 standalone 浏览器独立运行模式），
+  // 则不进行任何默认选中，留空工作区并完全由用户自行决定点选进入。
   useEffect(() => {
     if (userPickedWorkspaceRef.current) return;
     if (!workspaces || workspaces.length === 0) return;
-    // 优先选 currentWs，其次是首个列表项
-    const target = (currentWs && workspaces.find((w) => w.id === currentWs.id)) || workspaces[0];
+
+    // 区分当前运行环境：如果是非官方 VS Code（独立网页运行或第三方宿主 IDE），不触发任何默认进入工作区的操作
+    const isStandalone = getBridgeEnvironment() === "standalone";
+    const isThirdPartyIde = showRedirectSelector;
+    if (isStandalone || isThirdPartyIde) {
+      return;
+    }
+
+    // 官方 VS Code 模式下：仅当 currentWs 存在且能从 workspace 列表中检索到时才默认选中
+    const target = currentWs && workspaces.find((w) => w.id === currentWs.id);
     if (!target) return;
     if (selectedWorkspace && selectedWorkspace.id === target.id) return;
     setSelectedWorkspace(target);
     setViewingWorkspaceFiles(false);
     setCurrentView("sessions");
-  }, [workspaces, currentWs, selectedWorkspace]);
+  }, [workspaces, currentWs, selectedWorkspace, showRedirectSelector]);
+
+  // 记录上一次的 ideRedirectTarget，在其发生变化（即用户在第三方 IDE 顶部切换了正式版/Insiders版本）时，
+  // 应当立即将已选中的工作区、会话以及工作区级视图状态清空，并退回到工作区列表视图。
+  const prevRedirectTargetRef = useRef(preferences?.ideRedirectTarget);
+  useEffect(() => {
+    if (preferences?.ideRedirectTarget !== prevRedirectTargetRef.current) {
+      prevRedirectTargetRef.current = preferences?.ideRedirectTarget;
+      setSelectedWorkspace(null);
+      setSelectedSession(null);
+      setViewingWorkspaceFiles(false);
+      setCurrentView("workspaces");
+    }
+  }, [preferences?.ideRedirectTarget]);
 
   const { data: sessions, loading: sessionsLoading } = useSessionsByWorkspace(
     selectedWorkspaceId
@@ -200,6 +224,15 @@ export function App() {
       onBackToSessions={handleBackToSessions}
       selectedSession={selectedSession}
       viewingRepoFiles={viewingWorkspaceFiles}
+      sessionSortAction={
+        <SortControl
+          value={workspaceState.sessionSort}
+          onChange={(next) =>
+            updateWorkspaceState({ sessionSort: next })
+          }
+          testIdScope="session"
+        />
+      }
       repoPanel={
         <Panel
           title="工作区"
@@ -219,6 +252,10 @@ export function App() {
             onPinnedChange={(next) =>
               updateWorkspaceState({ pinnedWorkspaceIds: next })
             }
+            preferences={preferences}
+            showRedirectSelector={showRedirectSelector}
+            isAgy={isAgy}
+            onPreferencesChange={updateUiPreferences}
           />
         </Panel>
       }

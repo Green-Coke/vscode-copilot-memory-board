@@ -144,8 +144,8 @@ export function SessionList({
 
   return (
     <div className="flex flex-col h-full">
-      {/* 排序控件：去掉冗余的 SORT 文案，仅保留紧凑下拉 + 方向切换 */}
-      <div className="flex items-center justify-end px-3 pt-3 pb-2 border-b border-border-subtle bg-surface-1/10">
+      {/* 排序控件：在窄屏单栏模式下合并到 NarrowHeader 渲染以节省空间，非窄屏时在此处显示 */}
+      <div className="flex items-center justify-end px-3 pt-3 pb-2 border-b border-border-subtle bg-surface-1/10 min-[500px]:flex hidden">
         <SortControl
           value={sortOption}
           onChange={onSortChange}

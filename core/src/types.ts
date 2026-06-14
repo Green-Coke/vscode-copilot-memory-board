@@ -139,6 +139,12 @@ export interface SortOption {
 export interface UiPreferences {
   /** 是否启用文件预览能力 */
   enableFilePreview: boolean;
+  /** IDE 重定向目标（在派生 IDE 下检测并引用 VS Code 正式版/体验版的 memories，仅在 agy ide 环境下有效）
+   * - "none": 不进行重定向，读取当前 IDE 的目录
+   * - "stable": 重定向到 VS Code 稳定版 (Code)
+   * - "insiders": 重定向到 VS Code 体验版 (Code - Insiders)
+   */
+  ideRedirectTarget: "none" | "stable" | "insiders";
 }
 
 /**
@@ -146,14 +152,15 @@ export interface UiPreferences {
  */
 export const DEFAULT_UI_PREFERENCES: UiPreferences = {
   enableFilePreview: true,
+  ideRedirectTarget: "stable", // 默认重定向至 VS Code 稳定版
 };
 
 /**
- * 工作区级偏好的默认排序：列表默认按名称升序，文件树默认按名称升序
+ * 工作区级偏好的默认排序：列表默认按创建时间降序，以展示最新的记录
  */
 export const DEFAULT_LIST_SORT: SortOption = {
-  by: "name",
-  direction: "asc",
+  by: "createdAt",
+  direction: "desc",
 };
 
 /**
@@ -176,12 +183,13 @@ export interface WorkspaceState {
 };
 
 /**
- * 默认工作区状态
+ * 默认工作区状态：
+ * 默认情况下，工作区列表与会话列表按创建时间倒序排列；文件树保持名称升序排列以方便查看目录树结构。
  */
 export const DEFAULT_WORKSPACE_STATE: WorkspaceState = {
   workspaceSort: { ...DEFAULT_LIST_SORT },
   sessionSort: { ...DEFAULT_LIST_SORT },
-  fileTreeSort: { ...DEFAULT_LIST_SORT },
+  fileTreeSort: { by: "name", direction: "asc" },
   previewVisible: true,
   pinnedWorkspaceIds: [],
   pinnedSessionIds: [],

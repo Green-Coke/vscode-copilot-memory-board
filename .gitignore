@@ -35,3 +35,4 @@ coverage/
 
 # tem files
 .tmp
+test-results

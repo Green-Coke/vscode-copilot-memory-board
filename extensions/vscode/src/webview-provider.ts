@@ -33,8 +33,8 @@ import type {
   Workspace,
   WorkspaceState,
 } from "@memory-board/core";
-import { readClipboardFilePaths } from "./clipboard-files";
-
+// 创建专属的输出通道，使得在宿主 IDE 的“输出”下拉框中可以找到 Memory Board 的日志
+export const outputChannel = vscode.window.createOutputChannel("Memory Board");
 
 /**
  * 全局 UI 偏好在 globalState 中的 key
@@ -89,14 +89,19 @@ export class MemoryBoardWebviewCore {
    * 当前激活 workspaceId（从 storageUri 反推；不可用时为 undefined）。
    * 用于仅扫描本地工作区时限定。
    */
-  private readonly currentWorkspaceId: string | undefined;
+  private currentWorkspaceId: string | undefined;
 
   /**
    * workspaceStorage 根目录的绝对路径。
    * 形如 Windows: C:/Users/xxx/AppData/Roaming/Code/User/workspaceStorage
    *       Insiders:  C:/Users/xxx/AppData/Roaming/Code - Insiders/User/workspaceStorage
    */
-  private readonly workspaceStoragePath: string | undefined;
+  private workspaceStoragePath: string | undefined;
+
+  /**
+   * 是否展示重定向选择器（当前运行在非官方 VS Code 环境下时展示）
+   */
+  private showRedirectSelector: boolean = false;
 
   /**
    * 多 workspace 缓存：启动时初始化 + 用户点击刷新时更新。
@@ -114,6 +119,7 @@ export class MemoryBoardWebviewCore {
     const resolved = this.resolveWorkspaceStoragePath();
     this.workspaceStoragePath = resolved?.workspaceStoragePath;
     this.currentWorkspaceId = resolved?.workspaceId;
+    this.showRedirectSelector = resolved?.showRedirectSelector ?? false;
 
     if (this.workspaceStoragePath && this.currentWorkspaceId) {
       // 优先读 dev/test 环境变量覆盖（e2e 注入 tmpdir mock 时使用）
@@ -147,14 +153,18 @@ export class MemoryBoardWebviewCore {
    * 正式版 uriScheme="code"、Insiders="code-insiders"。
    * 若 storageUri 不可用（例如扩展被未在 workspace 中激活）则返回 undefined。
    */
+  /**
+   * 从 context.storageUri 反推 workspaceStorage 根路径与当前 workspaceId，并判断是否需要重定向。
+   * 添加了中文注释以解释其作用及复杂逻辑。
+   */
   private resolveWorkspaceStoragePath():
-    | { workspaceStoragePath: string; workspaceId: string }
+    | { workspaceStoragePath: string; workspaceId: string; showRedirectSelector: boolean }
     | undefined {
     const storageUri = this.context.storageUri ?? this.context.globalStorageUri;
     if (!storageUri) {
       return undefined;
     }
-    // fsPath 形如 "\\workspaceStorage\\<id>\\<extId>"；按 sep 拆开后从尾部回搾
+    // fsPath 形如 "\\workspaceStorage\\<id>\\<extId>"；按 sep 拆开后从尾部解析
     const parts = storageUri.fsPath.split(path.sep).filter((p) => p.length > 0);
     // 保证至少有 "…/workspaceStorage/<id>/<extId>" 三级
     const wsIdx = parts.findIndex((p) => p.toLowerCase() === "workspacestorage");
@@ -166,9 +176,115 @@ export class MemoryBoardWebviewCore {
       // parts[wsIdx + 1] 在数组尾后访问会返回 undefined；这里提前返回避免类型缩窄问题
       return undefined;
     }
-    const workspaceStoragePath = parts.slice(0, wsIdx + 1).join(path.sep);
+    
+    // 计算原始的 workspaceStoragePath，修复 macOS/Linux 下绝对路径丢失开头分隔符的潜在问题
+    let workspaceStoragePath = parts.slice(0, wsIdx + 1).join(path.sep);
+    if (storageUri.fsPath.startsWith(path.sep)) {
+      workspaceStoragePath = path.sep + workspaceStoragePath;
+    }
+
+    // 默认的 workspaceStoragePath
+    let finalWorkspaceStoragePath = workspaceStoragePath;
+
+    // 输出详细的诊断日志至专属的 Output Channel (Memory Board) 管道，以便在 IDE 的输出面板下拉菜单中直接查看
+    outputChannel.appendLine(`[Memory Board Diagnostics] storageUri.fsPath: ${storageUri.fsPath}`);
+    outputChannel.appendLine(`[Memory Board Diagnostics] Calculated workspaceStoragePath: ${workspaceStoragePath}`);
+    outputChannel.appendLine(`[Memory Board Diagnostics] Calculated workspaceId: ${workspaceId}`);
+
+    // 获取当前运行 IDE 的目录名称（如 "Code"、"Code - Insiders"、"Antigravity IDE" 等）
+    const currentAppName = wsIdx >= 2 ? parts[wsIdx - 2] : "";
+
+    // 判定当前是否为官方 VS Code（稳定版或体验版）
+    const isOfficialVSCode = (() => {
+      if (!currentAppName) {
+        return true; // 无法提取到应用名时，默认不展示重定向选择器
+      }
+      const appNameLower = currentAppName.toLowerCase();
+      // 官方常见文件夹名为 "code"、"code - insiders"、"code-insiders" (包括大小写变体)
+      if (
+        appNameLower === "code" ||
+        appNameLower === "code - insiders" ||
+        appNameLower === "code-insiders"
+      ) {
+        return true;
+      }
+
+      // 同时结合 vscode.env 提供的环境变量进行辅助判定
+      const envAppName = vscode.env.appName ? vscode.env.appName.toLowerCase() : "";
+      const envUriScheme = vscode.env.uriScheme ? vscode.env.uriScheme.toLowerCase() : "";
+      if (
+        envAppName === "visual studio code" ||
+        envAppName === "visual studio code - insiders" ||
+        envAppName === "visual studio code – insiders"
+      ) {
+        return true;
+      }
+      if (envUriScheme === "code" || envUriScheme === "code-insiders") {
+        return true;
+      }
+
+      return false;
+    })();
+
+    // 只有在非 VS Code 官方版本（即第三方 IDE）下，才展示重定向切换下拉按钮
+    const showRedirectSelector = !isOfficialVSCode;
+
+    // 读取全局偏好，决定重定向的目标（stable / insiders / none）
+    const prefs = this.readUiPreferences();
+    const redirectTarget = prefs.ideRedirectTarget ?? "stable";
+
+    // 针对第三方 IDE 的重定向逻辑：
+    // 若当前环境是非官方 VS Code（如 Antigravity IDE），且启用了重定向目标，
+    // 则将 AppData/Roaming 中的 IDE 目录名称动态替换为官方 VS Code 对应目录名。
+    if (showRedirectSelector && redirectTarget !== "none" && currentAppName) {
+      const targetDirName = redirectTarget === "insiders" ? "Code - Insiders" : "Code";
+      const redirectedParts = [...parts];
+      redirectedParts[wsIdx - 2] = targetDirName;
+      
+      let codePath = redirectedParts.slice(0, wsIdx + 1).join(path.sep);
+      if (storageUri.fsPath.startsWith(path.sep)) {
+        codePath = path.sep + codePath;
+      }
+
+      if (fs.existsSync(codePath)) {
+        finalWorkspaceStoragePath = codePath;
+        outputChannel.appendLine(
+          `[Memory Board] Detect third-party IDE (${currentAppName}), redirecting workspaceStoragePath to VS Code (${redirectTarget}): ${finalWorkspaceStoragePath}`
+        );
+      } else {
+        outputChannel.appendLine(
+          `[Memory Board] VS Code storage directory not found at: ${codePath}. Keep original path.`
+        );
+      }
+    }
+
     // Insiders / stable 的路径中“Code - Insiders” 与 "Code" 差异已被 storageUri 本身反映，无需重复处理
-    return { workspaceStoragePath, workspaceId };
+    return { workspaceStoragePath: finalWorkspaceStoragePath, workspaceId, showRedirectSelector };
+  }
+
+  /**
+   * 重新初始化 Parser 实例。用于当用户在前端切换了 IDE 重定向选项后动态刷新数据。
+   */
+  private reinitParser(): void {
+    const resolved = this.resolveWorkspaceStoragePath();
+    this.workspaceStoragePath = resolved?.workspaceStoragePath;
+    this.currentWorkspaceId = resolved?.workspaceId;
+    this.showRedirectSelector = resolved?.showRedirectSelector ?? false;
+
+    if (this.workspaceStoragePath && this.currentWorkspaceId) {
+      const override = process.env["MEMORY_BOARD_WS_STORAGE_OVERRIDE"];
+      const basePath = (override && override.trim().length > 0) ? override : this.workspaceStoragePath;
+      this.parser = new MemoryParser({
+        basePath,
+        currentWorkspaceId: this.currentWorkspaceId,
+      });
+      outputChannel.appendLine(
+        `[Memory Board] MemoryParser reinitialized: workspaceId=${this.currentWorkspaceId}, basePath=${basePath}`
+      );
+    } else {
+      this.parser = undefined;
+      outputChannel.appendLine("[Memory Board] MemoryParser disabled (storage path unavailable).");
+    }
   }
 
   /**
@@ -310,7 +426,11 @@ export class MemoryBoardWebviewCore {
           response = {
             type: message.type,
             requestId: message.requestId,
-            payload: { preferences: prefs },
+            payload: {
+              preferences: prefs,
+              showRedirectSelector: this.showRedirectSelector,
+              isAgy: this.showRedirectSelector // 兼容旧版 isAgy 命名
+            },
             error: null,
           };
           break;
@@ -321,6 +441,13 @@ export class MemoryBoardWebviewCore {
             preferences: Partial<UiPreferences>;
           };
           const next = this.writeUiPreferences(patch);
+
+          // 若修改了重定向 IDE 目标偏好，则重新解析工作区存储路径并重新扫描刷新
+          if (patch.ideRedirectTarget !== undefined) {
+            this.reinitParser();
+            await this.refresh(webview);
+          }
+
           response = {
             type: message.type,
             requestId: message.requestId,
@@ -768,9 +895,9 @@ export class MemoryBoardWebviewCore {
       return;
     }
 
-    // 路径存在：打开真实的物理文件
+    // 路径存在：打开真实的物理文件。设置 preserveFocus: true，从而使焦点依然保留在 Webview (Memory Board) 内部，保证复制粘贴等快捷键继续有效
     const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-    await vscode.window.showTextDocument(doc, { preview: true });
+    await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
   }
 
   // ---------------------------------------------------------------------------

@@ -48,6 +48,31 @@
   --ui-category-pattern: #7e22ce;      /* 深紫罗兰色 */
   --ui-category-unknown: #475569;      /* 灰蓝色 */
   --ui-category-bookmark: #be123c;     /* 深玫瑰红 */
+
+  /* ========================================================================
+     装饰层 Token：cyber-bg 光晕 / cyber-grid 网格 / glass-panel 磨砂面板
+     抽离为变量便于 VS Code 主题映射覆盖；Standalone 模式保留原硬编码值
+     ======================================================================== */
+
+  /* 光晕装饰背景色（cyber-bg::before / ::after 的径向渐变端点色） */
+  --ui-glow-primary: rgba(99, 102, 241, 0.08);   /* 紫色光晕 */
+  --ui-glow-secondary: rgba(6, 182, 212, 0.07);  /* 青色光晕 */
+
+  /* 背景网格线条颜色（cyber-grid 的 linear-gradient 端点色） */
+  --ui-grid-line: rgba(140, 192, 235, 0.12);
+
+  /* 磨砂玻璃面板（浅色 standalone 模式默认值） */
+  --ui-panel-bg: rgba(255, 255, 255, 0.6);
+  --ui-panel-shadow: rgba(140, 192, 235, 0.15);
+  --ui-panel-hover-border: rgba(140, 192, 235, 0.5);
+  --ui-panel-hover-shadow: rgba(140, 192, 235, 0.25);
+
+  /* ========================================================================
+     徽章透明度 Token：统一控制所有 badge-* 的底色/边框 alpha 比例
+     （默认与原有硬编码 rgba 的 7% / 20% 保持一致；高对比度模式下整体调低）
+     ======================================================================== */
+  --ui-badge-bg-alpha: 0.07;
+  --ui-badge-border-alpha: 0.2;
 }
 
 /* VS Code 运行环境下的主题变量映射 */
@@ -83,6 +108,25 @@ body.vscode-high-contrast {
   --ui-selected-border: var(--vscode-focusBorder, rgba(99, 102, 241, 0.6));
   --ui-selected-text: var(--vscode-textLink-foreground, var(--vscode-list-activeSelectionForeground, #c7d2fe));
   --ui-selected-glow: var(--vscode-focusBorder, rgba(99, 102, 241, 0.8));
+
+  /* ========================================================================
+     装饰层映射：让 cyber-bg / cyber-grid / glass-panel 跟随 VS Code IDE 主题
+     使用 color-mix() 从 VS Code 原生主题色派生，深/浅/高对比度模式均自动适配
+     ======================================================================== */
+
+  /* 光晕色：使用 link 色（深色下为亮蓝/浅色下为深蓝），低 alpha 让其融入背景 */
+  --ui-glow-primary: color-mix(in srgb, var(--vscode-textLink-foreground, #6366f1) 6%, transparent);
+  --ui-glow-secondary: color-mix(in srgb, var(--vscode-textLink-activeForeground, #14b8a6) 5%, transparent);
+
+  /* 网格线：复用 widget-border 的边线感，淡淡可辨 */
+  --ui-grid-line: color-mix(in srgb, var(--vscode-widget-border, rgba(128, 128, 128, 0.1)) 80%, transparent);
+
+  /* 磨砂面板：底色取自 editorWidget-background（自动跟随深浅），阴影柔和 */
+  --ui-panel-bg: color-mix(in srgb, var(--vscode-editorWidget-background, rgba(128, 128, 128, 0.08)) 70%, transparent);
+  --ui-panel-shadow: color-mix(in srgb, var(--vscode-widget-border, rgba(128, 128, 128, 0.3)) 40%, transparent);
+  /* 悬停着色用 focusBorder，保持与原生交互态一致 */
+  --ui-panel-hover-border: var(--vscode-focusBorder, var(--color-border-hover));
+  --ui-panel-hover-shadow: color-mix(in srgb, var(--vscode-focusBorder, rgba(128, 128, 128, 0.3)) 25%, transparent);
 }
 
 /* VS Code 浅色主题下的特定颜色微调以满足对比度要求 */
@@ -94,6 +138,25 @@ body.vscode-light {
   --ui-category-pattern: #7e22ce;      /* 紫罗兰色 */
   --ui-category-unknown: #475569;      /* 蓝灰色 */
   --ui-category-bookmark: #be123c;     /* 深玫瑰红 */
+}
+
+/* VS Code 高对比度主题：无障碍优化
+   - 完全隐藏光晕装饰（避免色彩干扰阅读）
+   - 清零网格层不透明度（仅保留极少量信息感）
+   - 大幅降低徽章底色 alpha，仅靠彩色边框 + 文字辨识分类（避免大面积色块干扰） */
+body.vscode-high-contrast .cyber-bg::before,
+body.vscode-high-contrast .cyber-bg::after {
+  display: none;
+}
+
+body.vscode-high-contrast .cyber-grid {
+  opacity: 0;
+}
+
+body.vscode-high-contrast {
+  --ui-badge-bg-alpha: 0.02;
+  --ui-badge-border-alpha: 0.55;
+  --ui-panel-bg: color-mix(in srgb, var(--vscode-editorWidget-background, rgba(0, 0, 0, 0.6)) 85%, transparent);
 }
 
 @theme {
@@ -246,7 +309,7 @@ body {
   left: -10%;
   width: 50%;
   height: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--ui-glow-primary) 0%, transparent 70%);
   filter: blur(80px);
   animation: float-slow 20s infinite alternate var(--ease-in-out-sine);
 }
@@ -258,12 +321,12 @@ body {
   right: -10%;
   width: 50%;
   height: 50%;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.07) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--ui-glow-secondary) 0%, transparent 70%);
   filter: blur(80px);
   animation: float-slow 25s infinite alternate-reverse var(--ease-in-out-sine);
 }
 
-/* 默认背景网格，适合浅色温暖色调，使用淡天蓝色线条 */
+/* 默认背景网格，适合浅色温暖色调。颜色由变量提供，会在 VS Code 主题下自动重映射 */
 .cyber-grid {
   position: absolute;
   top: 0;
@@ -271,56 +334,38 @@ body {
   right: 0;
   bottom: 0;
   background-image: 
-    linear-gradient(to right, rgba(140, 192, 235, 0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(140, 192, 235, 0.12) 1px, transparent 1px);
+    linear-gradient(to right, var(--ui-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--ui-grid-line) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   z-index: 1;
   opacity: 0.85;
 }
 
-/* VS Code 深色与高对比度主题下的背景网格颜色，使用微弱的白色网格线 */
-body.vscode-dark .cyber-grid,
-body.vscode-high-contrast .cyber-grid {
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+/* VS Code 深色主题下覆盖网格线变量：使用微弱白色线条贴合暗色背景 */
+body.vscode-dark {
+  --ui-grid-line: color-mix(in srgb, var(--vscode-foreground, rgba(255, 255, 255, 0.04)) 4%, transparent);
 }
 
 /* ============================================================================
    Glassmorphism Styles
    ============================================================================ */
 
-/* 磨砂玻璃卡片面板，浅色模式下默认使用纯白磨砂质感和淡天蓝色软投影 */
+/* 磨砂玻璃卡片面板：颜色与阴影走 --ui-panel-* 变量，VS Code 主题下自动跟随 */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--ui-panel-bg);
   backdrop-filter: blur(20px) saturate(140%);
   border: 1px solid var(--color-border-default);
-  box-shadow: 0 4px 30px rgba(140, 192, 235, 0.15);
+  box-shadow: 0 4px 30px var(--ui-panel-shadow);
   transition: all 0.3s var(--ease-out-expo);
 }
 
 .glass-panel-hover:hover {
-  border-color: rgba(140, 192, 235, 0.5);
+  border-color: var(--ui-panel-hover-border);
   box-shadow: 
-    0 6px 30px rgba(140, 192, 235, 0.25),
-    0 0 15px -3px rgba(140, 192, 235, 0.1);
+    0 6px 30px var(--ui-panel-hover-shadow),
+    0 0 15px -3px var(--ui-panel-hover-shadow);
   transform: translateY(-1px);
-}
-
-/* VS Code 深色与高对比度下的磨砂卡片样式微调，恢复暗色质感 */
-body.vscode-dark .glass-panel,
-body.vscode-high-contrast .glass-panel {
-  background: rgba(16, 16, 24, 0.45);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
-}
-
-body.vscode-dark .glass-panel-hover:hover,
-body.vscode-high-contrast .glass-panel-hover:hover {
-  border-color: var(--color-border-hover);
-  box-shadow: 
-    0 4px 30px rgba(0, 0, 0, 0.5),
-    0 0 15px -3px rgba(122, 162, 247, 0.06);
 }
 
 /* Input boxes styling */
@@ -386,39 +431,44 @@ body.vscode-light .cyber-input:focus {
    Category Neon Badges
    ============================================================================ */
 
+/* ========================================================================
+   分类徽章：用 color-mix() 从 --color-category-* 派生背景与边框颜色，
+   alpha 由 --ui-badge-bg-alpha / --ui-badge-border-alpha 统一控制，
+   高对比度模式只需调整这两个变量即可整体调节所有徽章的视觉强度。
+   ======================================================================== */
 .badge-preference {
-  background: rgba(234, 179, 8, 0.07);
-  border: 1px solid rgba(234, 179, 8, 0.2);
+  background: color-mix(in srgb, var(--color-category-preference) calc(var(--ui-badge-bg-alpha) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-category-preference) calc(var(--ui-badge-border-alpha) * 100%), transparent);
   color: var(--color-category-preference);
 }
 .badge-context {
-  background: rgba(59, 130, 246, 0.07);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: color-mix(in srgb, var(--color-category-context) calc(var(--ui-badge-bg-alpha) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-category-context) calc(var(--ui-badge-border-alpha) * 100%), transparent);
   color: var(--color-category-context);
 }
 .badge-instruction {
-  background: rgba(239, 68, 68, 0.07);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: color-mix(in srgb, var(--color-category-instruction) calc(var(--ui-badge-bg-alpha) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-category-instruction) calc(var(--ui-badge-border-alpha) * 100%), transparent);
   color: var(--color-category-instruction);
 }
 .badge-knowledge {
-  background: rgba(16, 185, 129, 0.07);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: color-mix(in srgb, var(--color-category-knowledge) calc(var(--ui-badge-bg-alpha) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-category-knowledge) calc(var(--ui-badge-border-alpha) * 100%), transparent);
   color: var(--color-category-knowledge);
 }
 .badge-pattern {
-  background: rgba(168, 85, 247, 0.07);
-  border: 1px solid rgba(168, 85, 247, 0.2);
+  background: color-mix(in srgb, var(--color-category-pattern) calc(var(--ui-badge-bg-alpha) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-category-pattern) calc(var(--ui-badge-border-alpha) * 100%), transparent);
   color: var(--color-category-pattern);
 }
 .badge-unknown {
-  background: rgba(113, 113, 122, 0.07);
-  border: 1px solid rgba(113, 113, 122, 0.2);
+  background: color-mix(in srgb, var(--color-category-unknown) calc(var(--ui-badge-bg-alpha) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-category-unknown) calc(var(--ui-badge-border-alpha) * 100%), transparent);
   color: var(--color-category-unknown);
 }
 .badge-bookmark {
-  background: rgba(244, 63, 94, 0.07);
-  border: 1px solid rgba(244, 63, 94, 0.2);
+  background: color-mix(in srgb, var(--color-category-bookmark) calc(var(--ui-badge-bg-alpha) * 100%), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-category-bookmark) calc(var(--ui-badge-border-alpha) * 100%), transparent);
   color: var(--color-category-bookmark);
 }
 

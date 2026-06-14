@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // Layout — Responsive Adaptive Layout Container
 // ============================================================================
 // Provides three layout modes with glassmorphism styles:
@@ -33,12 +33,14 @@ interface NarrowHeaderProps {
   onBackToSessions?: () => void;
   /** 当前是否正处于工作区级目录视图 */
   viewingWorkspaceFiles?: boolean;
+  /** 右侧的自定义操作按钮或组件（如窄屏下的排序控件），以实现两行合并为一行 */
+  action?: ReactNode;
 }
 
 /**
  * 窄屏单栏模式下专用的顶部导航返回条。
  * 解决了面包屑路径过长、容易发生换行或重叠的问题。
- * - Sessions 视图下显示：[<-] 工作区名
+ * - Sessions 视图下显示：[<-] 工作区名 + 排序操作
  * - Entries 视图下显示：[<-] 会话标题（或工作区级目录时统一显示 Workspace Memories）
  */
 function NarrowHeader({
@@ -48,6 +50,7 @@ function NarrowHeader({
   onBackToWorkspaces,
   onBackToSessions,
   viewingWorkspaceFiles = false,
+  action,
 }: NarrowHeaderProps) {
   if (currentView === "workspaces") return null;
 
@@ -58,17 +61,24 @@ function NarrowHeader({
     : selectedWorkspace?.name;
 
   return (
-    <nav className="flex items-center gap-2 px-3 py-2 border-b border-border-default bg-surface-1/80 backdrop-blur-md z-20 relative min-h-[40px] shrink-0">
-      <button
-        onClick={handleBack}
-        className="p-1 rounded hover:bg-surface-3 transition-colors text-text-secondary hover:text-brand-indigo cursor-pointer flex items-center justify-center shrink-0"
-        title="返回上一级"
-      >
-        <ChevronLeft className="w-5 h-5" />
-      </button>
-      <span className="text-xs font-bold text-text-primary truncate font-display">
-        {title}
-      </span>
+    <nav className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border-default bg-surface-1/80 backdrop-blur-md z-20 relative min-h-[40px] shrink-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={handleBack}
+          className="p-1 rounded hover:bg-surface-3 transition-colors text-text-secondary hover:text-brand-indigo cursor-pointer flex items-center justify-center shrink-0"
+          title="返回上一级"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <span className="text-xs font-bold text-text-primary truncate font-display">
+          {title}
+        </span>
+      </div>
+      {action && (
+        <div className="flex items-center shrink-0 select-none">
+          {action}
+        </div>
+      )}
     </nav>
   );
 }
@@ -332,15 +342,17 @@ interface LayoutProps {
   selectedSession?: any;
   /** 当前是否为工作区级目录视图（Adapter: 保留 repo 命名以兼容 App.tsx 调用方） */
   viewingRepoFiles?: boolean;
+  /** 窄屏模式下在会话列表头部渲染的排序控件（合并为一行用） */
+  sessionSortAction?: ReactNode;
 }
 
 /**
  * 工作区栏折叠按钮：VS Code 插件模式下没有 AppHeader，
  * 这个紧凑按钮提供展开/折叠入口，挂在 Panel 标题栏图标左侧。
  *
-   * disabled=true（未选择工作区）时按钮置灰且不可点击，但仍保持可见，
-   * 明确传达“当前不可折叠”的状态；由 App.tsx 通过 Panel 的 leadingAction 注入。
-   */
+ * disabled=true（未选择工作区）时按钮置灰且不可点击，但仍保持可见，
+ * 明确传达“当前不可折叠”的状态；由 App.tsx 通过 Panel 的 leadingAction 注入。
+ */
 export function WorkspaceCollapseButton({
   collapsed,
   onToggle,
@@ -399,6 +411,7 @@ export function AdaptiveLayout({
   onBackToSessions,
   selectedSession,
   viewingRepoFiles,
+  sessionSortAction,
 }: LayoutProps) {
   return (
     <div className="flex flex-col h-full relative overflow-hidden select-none bg-surface-0">
@@ -465,6 +478,7 @@ export function AdaptiveLayout({
           onBackToWorkspaces={onBackToRepos as any}
           onBackToSessions={onBackToSessions}
           viewingWorkspaceFiles={viewingRepoFiles as any}
+          action={currentView === "sessions" ? sessionSortAction : undefined}
         />
         <div className="flex-1 overflow-y-auto min-h-0 bg-surface-1/30">
           {currentView === "workspaces" && repoPanel}

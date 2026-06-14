@@ -86,9 +86,8 @@ export function useFileTreeKeyboard({
       if (isCtrlOrCmd && e.key === "v") {
         e.preventDefault();
         e.stopPropagation();
-        // 粘贴目标：选中的文件夹节点，或 null（根目录）
-        const targetNode = selectedNode?.type === "dir" ? selectedNode : null;
-        onPaste(targetNode);
+        // 粘贴目标：直接传递选中的节点（可能是文件夹或文件，后续由 file tree 粘贴事件的父目录获取逻辑统一处理）
+        onPaste(selectedNode);
         return;
       }
 

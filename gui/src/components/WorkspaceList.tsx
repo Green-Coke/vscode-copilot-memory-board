@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { useState, useMemo } from "react";
-import type { Workspace, SortOption } from "@memory-board/core";
+import type { Workspace, SortOption, UiPreferences } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { FolderGit2, Clock, ChevronRight, Search, X } from "lucide-react";
 import { PinnedButton } from "@/components/PinnedButton";
@@ -27,6 +27,14 @@ interface WorkspaceListProps {
   pinnedIds: string[];
   /** 钉选集合变化回调（受控） */
   onPinnedChange: (next: string[]) => void;
+  /** 全局 UI 偏好 */
+  preferences?: UiPreferences;
+  /** 是否展示重定向选择器 */
+  showRedirectSelector?: boolean;
+  /** 是否处于 Antigravity 环境下（保留兼容） */
+  isAgy?: boolean;
+  /** 更新偏好回调 */
+  onPreferencesChange?: (patch: Partial<UiPreferences>) => Promise<void>;
 }
 
 export function WorkspaceList({
@@ -38,6 +46,10 @@ export function WorkspaceList({
   onSortChange,
   pinnedIds,
   onPinnedChange,
+  preferences,
+  showRedirectSelector,
+  isAgy,
+  onPreferencesChange,
 }: WorkspaceListProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -88,36 +100,35 @@ export function WorkspaceList({
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Render Empty State
-  // ---------------------------------------------------------------------------
-  if (workspaces.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
-        {/* Futuristic SVG Radar scan illustration */}
-        <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
-          <svg viewBox="0 0 100 100" className="w-16 h-16 text-brand-indigo/35 animate-spin duration-10000" fill="none" stroke="currentColor" strokeWidth="1">
-            <circle cx="50" cy="50" r="40" strokeDasharray="6 6" />
-            <circle cx="50" cy="50" r="25" />
-            <line x1="50" y1="10" x2="50" y2="90" />
-            <line x1="10" y1="50" x2="90" y2="50" />
-          </svg>
-          <FolderGit2 className="absolute w-6 h-6 text-brand-indigo animate-pulse" />
-        </div>
-        <h3 className="text-xs font-bold tracking-wider text-text-primary uppercase font-display">
-          暂无工作区
-        </h3>
-        <p className="text-[11px] text-text-secondary mt-1.5 max-w-[200px] leading-relaxed">
-          在本工作区使用 Copilot Chat 后，记忆会自动同步到此处。
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full">
-      {/* 排序控件：去掉冗余的 SORT 文案，仅保留紧凑下拉 + 方向切换 */}
-      <div className="flex items-center justify-end px-3 pt-3 pb-2 border-b border-border-subtle bg-surface-1/10">
+      {/* 排序与 IDE 缓存重定向控件：使用内联样式确保 16px 左内边距绝对生效，避免文字靠边框过近，并与列表整体保持协调 */}
+      <div 
+        className="flex items-center justify-between pt-3 pb-2 border-b border-border-subtle bg-surface-1/10"
+        style={{ paddingLeft: "16px", paddingRight: "16px" }}
+      >
+        {(showRedirectSelector ?? isAgy) && preferences && onPreferencesChange ? (
+          <div className="flex items-center gap-1.5 select-none animate-fade-in text-[10px] text-text-secondary font-semibold font-mono">
+            {/* 提示当前为工作区（Workspaces）管理区域，去掉 "VS Code:" 提示以避免界面过于拥挤 */}
+            <span>Workspaces</span>
+            <span className="opacity-40">•</span>
+            <select
+              value={preferences.ideRedirectTarget ?? "stable"}
+              onChange={(e) => onPreferencesChange({ ideRedirectTarget: e.target.value as any })}
+              className="bg-surface-2 border border-border-default rounded px-2 py-0.5 text-[10px] font-mono text-text-primary outline-none focus:border-brand-indigo/60 transition-colors cursor-pointer"
+              title="处于第三方 IDE 环境时，可在此快速切换读取 VS Code 稳定版或体验版制造的 Copilot memories 缓存"
+            >
+              <option value="stable">Stable (稳定版)</option>
+              <option value="insiders">Insiders (体验版)</option>
+              <option value="none">Disabled (禁用)</option>
+            </select>
+          </div>
+        ) : (
+          /* VS Code 模式下，左上角显示 Workspaces 文字提示，表明此为工作区列表，避免界面过空 */
+          <div className="flex items-center select-none animate-fade-in text-[10px] text-text-secondary font-semibold font-mono">
+            <span>Workspaces</span>
+          </div>
+        )}
         <SortControl
           value={sortOption}
           onChange={onSortChange}
@@ -125,68 +136,91 @@ export function WorkspaceList({
         />
       </div>
 
-      {/* Search Input Box */}
-      <div className="p-3 border-b border-border-default bg-surface-1/20 z-10 relative">
-        <div className="relative flex items-center w-full">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
-            aria-label="搜索工作区"
-          />
-          {/* 存在搜索词时清空按钮自动向左避让，放大镜固定在最右侧，避免二者重叠 */}
-          {searchQuery ? (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          ) : null}
-          <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
-        </div>
-      </div>
-
-      {/* Repo Item List Container */}
-      <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
-        {pinned.length === 0 && unpinned.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center font-mono text-[11px] text-text-muted">
-            未找到匹配的工作区
+      {workspaces.length === 0 ? (
+        /* 当无工作区时展示空态，但顶部依然保留重定向切换及排序栏 */
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[300px]">
+          <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
+            <svg viewBox="0 0 100 100" className="w-16 h-16 text-brand-indigo/35 animate-spin duration-10000" fill="none" stroke="currentColor" strokeWidth="1">
+              <circle cx="50" cy="50" r="40" strokeDasharray="6 6" />
+              <circle cx="50" cy="50" r="25" />
+              <line x1="50" y1="10" x2="50" y2="90" />
+              <line x1="10" y1="50" x2="90" y2="50" />
+            </svg>
+            <FolderGit2 className="absolute w-6 h-6 text-brand-indigo animate-pulse" />
           </div>
-        ) : (
-          <>
-            {/* 钉选分组 */}
-            {pinned.length > 0 && (
+          <h3 className="text-xs font-bold tracking-wider text-text-primary uppercase font-display">
+            暂无工作区
+          </h3>
+          <p className="text-[11px] text-text-secondary mt-1.5 max-w-[200px] leading-relaxed">
+            在本工作区使用 Copilot Chat 后，记忆会自动同步到此处。
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Search Input Box */}
+          <div className="p-3 border-b border-border-default bg-surface-1/20 z-10 relative">
+            <div className="relative flex items-center w-full">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
+                aria-label="搜索工作区"
+              />
+              {/* 存在搜索词时清空按钮自动向左避让，放大镜固定在最右侧，避免二者重叠 */}
+              {searchQuery ? (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ) : null}
+              <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Repo Item List Container */}
+          <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
+            {pinned.length === 0 && unpinned.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center font-mono text-[11px] text-text-muted">
+                未找到匹配的工作区
+              </div>
+            ) : (
               <>
-                <div className="flex items-center gap-2 px-1 pt-1">
-                  <div className="h-px flex-1 bg-amber-500/30" />
-                  <span className="text-[9px] font-bold tracking-widest text-amber-500/80 font-display uppercase">
-                    Pinned
-                  </span>
-                  <div className="h-px flex-1 bg-amber-500/30" />
-                </div>
-                {pinned.map((workspace, index) =>
-                  renderWorkspace(workspace, index, true)
+                {/* 钉选分组 */}
+                {pinned.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 px-1 pt-1">
+                      <div className="h-px flex-1 bg-amber-500/30" />
+                      <span className="text-[9px] font-bold tracking-widest text-amber-500/80 font-display uppercase">
+                        Pinned
+                      </span>
+                      <div className="h-px flex-1 bg-amber-500/30" />
+                    </div>
+                    {pinned.map((workspace, index) =>
+                      renderWorkspace(workspace, index, true)
+                    )}
+                    {unpinned.length > 0 && (
+                      <div className="flex items-center gap-2 px-1 mt-2">
+                        <div className="h-px flex-1 bg-border-subtle" />
+                        <span className="text-[9px] font-bold tracking-widest text-text-muted font-display uppercase">
+                          Workspaces
+                        </span>
+                        <div className="h-px flex-1 bg-border-subtle" />
+                      </div>
+                    )}
+                  </>
                 )}
-                {unpinned.length > 0 && (
-                  <div className="flex items-center gap-2 px-1 mt-2">
-                    <div className="h-px flex-1 bg-border-subtle" />
-                    <span className="text-[9px] font-bold tracking-widest text-text-muted font-display uppercase">
-                      Workspaces
-                    </span>
-                    <div className="h-px flex-1 bg-border-subtle" />
-                  </div>
+                {/* 非钉选分组 */}
+                {unpinned.map((workspace, index) =>
+                  renderWorkspace(workspace, index, false)
                 )}
               </>
             )}
-            {/* 非钉选分组 */}
-            {unpinned.map((workspace, index) =>
-              renderWorkspace(workspace, index, false)
-            )}
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 

@@ -425,9 +425,9 @@ export function FileTree({ data, selectedNode, onSelectFile, rootPath }: FileTre
             break;
           }
           case "paste": {
-            // 确定粘贴目标目录
+            // 确定粘贴目标目录：如果选中的节点是文件，通过 getNodeParentDir 获取其父级目录
             const targetDir = node
-              ? resolveNodeAbsolutePath(node) ?? inferRootPath()
+              ? getNodeParentDir(node) ?? inferRootPath()
               : inferRootPath();
             if (!targetDir) return;
 

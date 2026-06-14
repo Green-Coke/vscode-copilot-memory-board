@@ -1,4 +1,4 @@
-﻿import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 /**
  * 在宽屏布局的主作用域内执行回调，避开窄屏/中屏同步渲染的副本。
@@ -176,3 +176,78 @@ test.describe("钉选", () => {
     expect(stored).not.toContain('"pinnedWorkspaceIds":[]');
   });
 });
+
+test.describe("第三方 IDE 缓存重定向切换按钮展示", () => {
+  test("在非官方 VS Code 环境下（showRedirectSelector 为 true），工作区列表顶部展示 VS Code 缓存切换按钮", async ({ page }) => {
+    // 注入 mock 模拟非官方 VS Code 容器环境，返回 showRedirectSelector: true
+    await page.addInitScript(() => {
+      (window as any).acquireVsCodeApi = () => {
+        return {
+          postMessage: (message: any) => {
+            if (message.type === "getUiPreferences") {
+              window.postMessage({
+                type: "getUiPreferences",
+                requestId: message.requestId,
+                payload: {
+                  preferences: { ideRedirectTarget: "stable" },
+                  showRedirectSelector: true,
+                  isAgy: true,
+                },
+                error: null,
+              }, "*");
+            } else if (message.type === "getWorkspaces") {
+              window.postMessage({
+                type: "getWorkspaces",
+                requestId: message.requestId,
+                payload: { workspaces: [] },
+                error: null,
+              }, "*");
+            }
+          },
+        };
+      };
+    });
+
+    await page.goto("/");
+    // 验证下拉选择框元素存在并且可见
+    const selector = page.locator("select").filter({ hasText: /Stable|Insiders/ }).first();
+    await expect(selector).toBeVisible();
+  });
+
+  test("在官方 VS Code 环境下（showRedirectSelector 为 false），不展示 VS Code 缓存切换按钮", async ({ page }) => {
+    // 注入 mock 模拟官方 VS Code 容器环境，返回 showRedirectSelector: false
+    await page.addInitScript(() => {
+      (window as any).acquireVsCodeApi = () => {
+        return {
+          postMessage: (message: any) => {
+            if (message.type === "getUiPreferences") {
+              window.postMessage({
+                type: "getUiPreferences",
+                requestId: message.requestId,
+                payload: {
+                  preferences: { ideRedirectTarget: "stable" },
+                  showRedirectSelector: false,
+                  isAgy: false,
+                },
+                error: null,
+              }, "*");
+            } else if (message.type === "getWorkspaces") {
+              window.postMessage({
+                type: "getWorkspaces",
+                requestId: message.requestId,
+                payload: { workspaces: [] },
+                error: null,
+              }, "*");
+            }
+          },
+        };
+      };
+    });
+
+    await page.goto("/");
+    // 验证下拉选择框元素不存在或不可见
+    const selector = page.locator("select").filter({ hasText: /Stable|Insiders/ });
+    await expect(selector).not.toBeVisible();
+  });
+});
+

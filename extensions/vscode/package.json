@@ -34,13 +34,6 @@
           "icon": "resources/icon.svg"
         }
       ],
-      "secondarySideBar": [
-        {
-          "id": "memory-board-secondary-sidebar-container",
-          "title": "Memory Board",
-          "icon": "resources/icon.svg"
-        }
-      ],
       "panel": [
         {
           "id": "memory-board-panel-container",
@@ -56,14 +49,6 @@
           "name": "Memory Board",
           "type": "webview",
           "when": "memoryBoard.activeLocation == sidebar"
-        }
-      ],
-      "memory-board-secondary-sidebar-container": [
-        {
-          "id": "memoryBoard.secondaryView",
-          "name": "Memory Board",
-          "type": "webview",
-          "when": "memoryBoard.activeLocation == secondarySidebar"
         }
       ],
       "memory-board-panel-container": [
@@ -93,11 +78,6 @@
         "category": "Memory Board"
       },
       {
-        "command": "memoryBoard.moveToSecondarySidebar",
-        "title": "Memory Board: Move to Secondary Side Bar",
-        "category": "Memory Board"
-      },
-      {
         "command": "memoryBoard.moveToPanel",
         "title": "Memory Board: Move to Panel Area",
         "category": "Memory Board"
@@ -112,33 +92,28 @@
       "view/title": [
         {
           "command": "memoryBoard.refresh",
-          "when": "view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView",
+          "when": "view == memoryBoard.mainView || view == memoryBoard.bottomPanelView",
           "group": "navigation"
         },
         {
           "command": "memoryBoard.moveToPrimarySidebar",
-          "when": "(view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView) && memoryBoard.activeLocation != sidebar",
+          "when": "(view == memoryBoard.mainView || view == memoryBoard.bottomPanelView) && memoryBoard.activeLocation != sidebar",
           "group": "1_movement@1"
         },
         {
           "command": "memoryBoard.moveToEditor",
-          "when": "view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView",
+          "when": "view == memoryBoard.mainView || view == memoryBoard.bottomPanelView",
           "group": "1_movement@2"
         },
         {
-          "command": "memoryBoard.moveToSecondarySidebar",
-          "when": "(view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView) && memoryBoard.activeLocation != secondarySidebar",
+          "command": "memoryBoard.moveToPanel",
+          "when": "(view == memoryBoard.mainView || view == memoryBoard.bottomPanelView) && memoryBoard.activeLocation != panel",
           "group": "1_movement@3"
         },
         {
-          "command": "memoryBoard.moveToPanel",
-          "when": "(view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView) && memoryBoard.activeLocation != panel",
-          "group": "1_movement@4"
-        },
-        {
           "command": "memoryBoard.moveToNewWindow",
-          "when": "view == memoryBoard.mainView || view == memoryBoard.secondaryView || view == memoryBoard.bottomPanelView",
-          "group": "1_movement@5"
+          "when": "view == memoryBoard.mainView || view == memoryBoard.bottomPanelView",
+          "group": "1_movement@4"
         }
       ],
       "editor/title": [
@@ -148,19 +123,14 @@
           "group": "1_movement@1"
         },
         {
-          "command": "memoryBoard.moveToSecondarySidebar",
+          "command": "memoryBoard.moveToPanel",
           "when": "activeWebviewPanelId == memoryBoard.panelView",
           "group": "1_movement@2"
         },
         {
-          "command": "memoryBoard.moveToPanel",
-          "when": "activeWebviewPanelId == memoryBoard.panelView",
-          "group": "1_movement@3"
-        },
-        {
           "command": "memoryBoard.moveToNewWindow",
           "when": "activeWebviewPanelId == memoryBoard.panelView",
-          "group": "1_movement@4"
+          "group": "1_movement@3"
         }
       ]
     }

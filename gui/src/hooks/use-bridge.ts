@@ -96,12 +96,24 @@ export function useWorkspaces(): AsyncState<Workspace[]> {
 export function useSessionsByWorkspace(
   workspaceId: string | null
 ): AsyncState<Session[]> {
-  return useAsyncData<Session[]>(async () => {
+  const state = useAsyncData<Session[]>(async () => {
     if (!workspaceId) return [];
     const response = await sendRequest("getSessionsByWorkspace", { workspaceId });
     if (response.error) throw new Error(response.error);
     return (response.payload as { sessions: Session[] }).sessions;
   }, [workspaceId]);
+
+  // 监听推送消息：当工作区数据改变或点击刷新按钮时自动更新当前会话列表
+  useEffect(() => {
+    const unsub = onPushMessage((msg: AnyPushMessage) => {
+      if (msg.type === "onWorkspacesChanged") {
+        state.refetch();
+      }
+    });
+    return unsub;
+  }, [state.refetch]);
+
+  return state;
 }
 
 /**
@@ -115,7 +127,7 @@ export function useMemoryContent(
   sessionId: string | null,
   workspaceId?: string | null
 ): AsyncState<MemoryEntry[]> {
-  return useAsyncData<MemoryEntry[]>(async () => {
+  const state = useAsyncData<MemoryEntry[]>(async () => {
     if (!sessionId) return [];
     const payload: { sessionId: string; workspaceId?: string } = { sessionId };
     if (workspaceId) {
@@ -125,6 +137,18 @@ export function useMemoryContent(
     if (response.error) throw new Error(response.error);
     return (response.payload as { entries: MemoryEntry[] }).entries;
   }, [sessionId, workspaceId]);
+
+  // 监听推送消息：当工作区数据改变（包含内部复制/剪切/粘贴/删除）或手动刷新时同步更新文件内容树
+  useEffect(() => {
+    const unsub = onPushMessage((msg: AnyPushMessage) => {
+      if (msg.type === "onWorkspacesChanged") {
+        state.refetch();
+      }
+    });
+    return unsub;
+  }, [state.refetch]);
+
+  return state;
 }
 
 /**
@@ -147,6 +171,10 @@ export function useCurrentWorkspace(): AsyncState<Workspace | null> {
 interface UiPreferencesState {
   preferences: UiPreferences;
   loading: boolean;
+  /** 是否展示重定向选择器 */
+  showRedirectSelector: boolean;
+  /** 是否处于 Antigravity IDE 宿主环境下（保留兼容） */
+  isAgy: boolean;
   /** 部分更新 UI 偏好（会与现有偏好合并并回写持久层） */
   update: (patch: Partial<UiPreferences>) => Promise<void>;
 }
@@ -159,6 +187,7 @@ export function useUiPreferences(): UiPreferencesState {
   const [preferences, setPreferences] = useState<UiPreferences>(
     DEFAULT_UI_PREFERENCES
   );
+  const [showRedirectSelector, setShowRedirectSelector] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // 初始加载：从 bridge 拉取一次
@@ -172,9 +201,19 @@ export function useUiPreferences(): UiPreferencesState {
           console.warn("[useUiPreferences] 读取偏好失败:", response.error);
           return;
         }
-        const data = (response.payload as { preferences: UiPreferences })
-          .preferences;
-        setPreferences({ ...DEFAULT_UI_PREFERENCES, ...data });
+        const payload = response.payload as {
+          preferences: UiPreferences;
+          showRedirectSelector?: boolean;
+          isAgy?: boolean;
+        };
+        setPreferences({ ...DEFAULT_UI_PREFERENCES, ...payload.preferences });
+        
+        // 优先使用 showRedirectSelector，其次使用 isAgy
+        if (payload.showRedirectSelector !== undefined) {
+          setShowRedirectSelector(payload.showRedirectSelector);
+        } else if (payload.isAgy !== undefined) {
+          setShowRedirectSelector(payload.isAgy);
+        }
       } catch (err) {
         console.warn("[useUiPreferences] 读取偏好异常:", err);
       } finally {
@@ -203,7 +242,7 @@ export function useUiPreferences(): UiPreferencesState {
     }
   }, []);
 
-  return { preferences, loading, update };
+  return { preferences, loading, showRedirectSelector, isAgy: showRedirectSelector, update };
 }
 
 interface WorkspaceStateHook {
