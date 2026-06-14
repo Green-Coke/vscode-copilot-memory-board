@@ -8,39 +8,65 @@
    Memory Board — 设计系统主题 Token (兼容 VS Code 主题与独立极地深海配色)
    ============================================================================ */
 
+/* ============================================================================
+   :root 只承载"与主题无关的通用常量"
+   所有颜色 token 现在都归属于主题块（body.theme-* / body.vscode-*）
+   这样移植到任何环境都只需切换 body 上的 class 即可激活对应主题。
+   Standalone 启动由 index.html 的 <body class="theme-macaron"> 同步注入（零 FOUC）。
+   VS Code webview 由 VS Code 运行时自动注入 vscode-dark/light/high-contrast。
+   ============================================================================ */
 :root {
-  /* 独立（Standalone）模式下的全新马卡龙温暖柔和浅色系配色体系 */
+  /* 字体（与主题无关） */
+  --font-sans: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, Roboto, sans-serif;
+  --font-display: "Outfit", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Fira Code, Consolas, Monaco, monospace;
+
+  /* 动画曲线（与主题无关） */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-sine: cubic-bezier(0.445, 0.05, 0.55, 0.95);
+
+  /* 徽章透明度常量（高对比度模式下被主题块覆盖） */
+  --ui-badge-bg-alpha: 0.07;
+  --ui-badge-border-alpha: 0.2;
+}
+
+/* ============================================================================
+   主题 1：theme-macaron —— 独立（Standalone）模式的马卡龙温暖浅色系
+   由 gui/index.html <body class="theme-macaron"> 同步激活，零 FOUC
+   ============================================================================ */
+body.theme-macaron {
+  /* 背景层 */
   --ui-surface-0: #fff9d2; /* 页面最底层背景色，奶黄色 */
   --ui-surface-1: #ffebcc; /* 侧边栏/列表区背景色，蜜桃杏色，形成立体过渡 */
   --ui-surface-2: #ffffff; /* 正常卡片与内容区的纯白背景，保证良好对比度 */
   --ui-surface-3: #bfddf0; /* 卡片悬停、列表项选中的淡天蓝色背景 */
   --ui-surface-4: #8cc0eb; /* 主要强调色背景、滚动条滑块颜色，天蓝色 */
 
-  /* 浅色主题下的高对比度暗色文本 */
+  /* 文本层 */
   --ui-text-primary: #1e293b;   /* 主文本，深石板灰 */
   --ui-text-secondary: #475569; /* 次级文本，中石板灰 */
   --ui-text-muted: #64748b;     /* 禁用或暗淡说明文本 */
 
-  /* 磨砂玻璃与淡蓝分界边框 Token */
+  /* 边框层 */
   --ui-border-default: rgba(140, 192, 235, 0.25); /* 默认边框，使用半透明天蓝 */
   --ui-border-hover: rgba(140, 192, 235, 0.6);    /* 悬停态边框，更明显的天蓝 */
   --ui-border-subtle: rgba(140, 192, 235, 0.12);   /* 暗淡分割边框 */
 
-  /* 核心功能强调与品牌配色 */
+  /* 品牌与强调色 */
   --ui-brand-indigo: #2563eb;  /* 加深的品牌蓝，提升选中态文字与边框对比度 */
   --ui-brand-indigo-soft: #8cc0eb;  /* 婴儿天蓝，仅用于装饰性发光与弱投影 */
   --ui-brand-purple: #c084fc;  /* 柔和粉紫色 */
   --ui-accent-cyan: #0284c7;    /* 加深的天青色，保证可读性 */
   --ui-accent-pink: #fb7185;    /* 柔桃粉色 */
 
-  /* 选中态专用 Token：更深的实体背景 + 深色文字，取代原半透明浅蓝 + 浅蓝文字 */
-  --ui-selected-bg: rgba(37, 99, 235, 0.14);  /* 选中项背景：更明显的淡蓝实体 */
+  /* 选中态专用 Token */
+  --ui-selected-bg: rgba(37, 99, 235, 0.14);   /* 选中项背景：更明显的淡蓝实体 */
   --ui-selected-bg-strong: rgba(37, 99, 235, 0.22);  /* 选中项图标容器背景 */
   --ui-selected-border: rgba(37, 99, 235, 0.45);     /* 选中项边框 */
   --ui-selected-text: #1d4ed8;   /* 选中项文字：深靛蓝，对比度远高于浅天蓝 */
   --ui-selected-glow: rgba(37, 99, 235, 0.85);      /* 选中条发光颜色 */
 
-  /* 各分类标记颜色，浅色模式下选用高对比度且协调的配色 */
+  /* 各分类标记颜色 */
   --ui-category-preference: #b45309; /* 深金橙色 */
   --ui-category-context: #1d4ed8;      /* 靛蓝色 */
   --ui-category-instruction: #b91c1c;  /* 红色 */
@@ -49,31 +75,39 @@
   --ui-category-unknown: #475569;      /* 灰蓝色 */
   --ui-category-bookmark: #be123c;     /* 深玫瑰红 */
 
-  /* ========================================================================
-     装饰层 Token：cyber-bg 光晕 / cyber-grid 网格 / glass-panel 磨砂面板
-     抽离为变量便于 VS Code 主题映射覆盖；Standalone 模式保留原硬编码值
-     ======================================================================== */
-
-  /* 光晕装饰背景色（cyber-bg::before / ::after 的径向渐变端点色） */
+  /* 装饰层：cyber-bg 光晕 */
   --ui-glow-primary: rgba(99, 102, 241, 0.08);   /* 紫色光晕 */
   --ui-glow-secondary: rgba(6, 182, 212, 0.07);  /* 青色光晕 */
 
-  /* 背景网格线条颜色（cyber-grid 的 linear-gradient 端点色） */
+  /* 装饰层：cyber-grid 网格线 */
   --ui-grid-line: rgba(140, 192, 235, 0.12);
 
-  /* 磨砂玻璃面板（浅色 standalone 模式默认值） */
+  /* 装饰层：glass-panel 磨砂玻璃面板 */
   --ui-panel-bg: rgba(255, 255, 255, 0.6);
   --ui-panel-shadow: rgba(140, 192, 235, 0.15);
   --ui-panel-hover-border: rgba(140, 192, 235, 0.5);
   --ui-panel-hover-shadow: rgba(140, 192, 235, 0.25);
 
-  /* ========================================================================
-     徽章透明度 Token：统一控制所有 badge-* 的底色/边框 alpha 比例
-     （默认与原有硬编码 rgba 的 7% / 20% 保持一致；高对比度模式下整体调低）
-     ======================================================================== */
-  --ui-badge-bg-alpha: 0.07;
-  --ui-badge-border-alpha: 0.2;
+  /* 装饰层：cyber-input 输入框 */
+  --ui-input-bg: rgba(255, 255, 255, 0.8);
+  --ui-input-border: rgba(140, 192, 235, 0.3);
+  --ui-input-focus-bg: rgba(255, 255, 255, 1);
+  --ui-input-focus-border: var(--ui-brand-indigo);
+  --ui-input-focus-shadow: rgba(140, 192, 235, 0.2);
+  --ui-input-placeholder-color: var(--ui-text-muted);
+
+  /* 装饰层：动画与图标 ID 装饰色 */
+  --ui-pulse-glow-color: rgba(99, 102, 241, 0.5);     /* pulse-glow 关键帧颜色 */
+  --ui-logo-glow-color: rgba(99, 102, 241, 0.2);      /* Layout logo 发光阴影 */
+
+  /* 装饰层：滚动条 hover 提亮色 */
+  --ui-scrollbar-thumb-hover: #fff9d2;                /* 浅色主题下提亮到 surface-0 */
 }
+
+/* ============================================================================
+   主题 2/3/4：VS Code 主题（dark / light / high-contrast）
+   VS Code 运行时自动在 webview <body> 注入对应 class
+   ============================================================================ */
 
 /* VS Code 运行环境下的主题变量映射 */
 body.vscode-dark,
@@ -127,6 +161,21 @@ body.vscode-high-contrast {
   /* 悬停着色用 focusBorder，保持与原生交互态一致 */
   --ui-panel-hover-border: var(--vscode-focusBorder, var(--color-border-hover));
   --ui-panel-hover-shadow: color-mix(in srgb, var(--vscode-focusBorder, rgba(128, 128, 128, 0.3)) 25%, transparent);
+
+  /* 装饰层：输入框 ── 直接绑定 VS Code 原生 input 变量 */
+  --ui-input-bg: var(--vscode-input-background, rgba(128, 128, 128, 0.1));
+  --ui-input-border: var(--vscode-input-border, rgba(128, 128, 128, 0.2));
+  --ui-input-focus-bg: var(--vscode-input-background, rgba(128, 128, 128, 0.15));
+  --ui-input-focus-border: var(--vscode-focusBorder, var(--ui-brand-indigo));
+  --ui-input-focus-shadow: color-mix(in srgb, var(--vscode-focusBorder, rgba(128, 128, 128, 0.3)) 35%, transparent);
+  --ui-input-placeholder-color: var(--vscode-input-placeholderForeground, var(--ui-text-muted));
+
+  /* 装饰层：动画/图标 ID 装饰色 ── 从 textLink-foreground 派生 */
+  --ui-pulse-glow-color: color-mix(in srgb, var(--vscode-textLink-foreground, #6366f1) 50%, transparent);
+  --ui-logo-glow-color: color-mix(in srgb, var(--vscode-textLink-foreground, #6366f1) 25%, transparent);
+
+  /* 装饰层：滚动条 hover 提亮色 ── 使用 list-hoverBackground */
+  --ui-scrollbar-thumb-hover: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.1));
 }
 
 /* VS Code 浅色主题下的特定颜色微调以满足对比度要求 */
@@ -159,7 +208,12 @@ body.vscode-high-contrast {
   --ui-panel-bg: color-mix(in srgb, var(--vscode-editorWidget-background, rgba(0, 0, 0, 0.6)) 85%, transparent);
 }
 
-@theme {
+/* 使用 @theme inline 而非 @theme：
+   inline 让 Tailwind 编译出的工具类（如 .bg-surface-0 / .text-text-primary）
+   直接引用 --ui-* 源变量，而不是 :root 上被固化的 --color-* 中间变量。
+   这样 body.vscode-dark/light/high-contrast 块对 --ui-* 的覆盖才能穿透生效。
+   参考文档：https://tailwindcss.com/docs/theme#referencing-other-variables */
+@theme inline {
   /* 覆盖默认字体 */
   --font-sans: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, Roboto, sans-serif;
   --font-display: "Outfit", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, Roboto, sans-serif;
@@ -281,7 +335,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--color-brand-indigo) 80%, white);
+  background: color-mix(in srgb, var(--color-brand-indigo) 80%, var(--ui-scrollbar-thumb-hover));
 }
 
 /* ============================================================================
@@ -368,63 +422,25 @@ body.vscode-dark {
   transform: translateY(-1px);
 }
 
-/* Input boxes styling */
-/* 输入框默认样式，浅色磨砂质感 */
+/* Input boxes styling —— 完全由 --ui-input-* 主题 token 驱动，无硬编码 */
 .cyber-input {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(140, 192, 235, 0.3);
+  background: var(--ui-input-bg);
+  border: 1px solid var(--ui-input-border);
   border-radius: 6px;
   color: var(--color-text-primary);
   font-size: 12px;
   transition: all 0.2s ease;
 }
 
+.cyber-input::placeholder {
+  color: var(--ui-input-placeholder-color);
+}
+
 .cyber-input:focus {
   outline: none;
-  border-color: var(--color-brand-indigo);
-  box-shadow: 0 0 0 2px rgba(140, 192, 235, 0.2);
-  background: rgba(255, 255, 255, 1);
-}
-
-/* VS Code 深色与高对比度主题下的输入框背景：从过深的 rgba(8,8,12,.6)
-   改为更贴近 surrounding surface 的浅灰背景，避免搜索框形成突兀的深色块 */
-/* VS Code 运行环境（包含深色、浅色、高对比度主题）下的输入框背景与边框，
-   直接绑定 VS Code 原生自带的主题输入框配色变量，保持输入框与原生面板配色完全和谐一致 */
-/* VS Code 运行环境下的输入框背景与边框：
-   通过半透明滤镜与底层网格背景透射融合，解决深色模式下死黑的问题，
-   能够稍微看到是搜索栏区域即可 */
-body.vscode-dark .cyber-input,
-body.vscode-high-contrast .cyber-input {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(4px);
-  color: var(--vscode-input-foreground, var(--ui-text-primary));
-}
-
-body.vscode-light .cyber-input {
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  backdrop-filter: blur(4px);
-  color: var(--vscode-input-foreground, var(--ui-text-primary));
-}
-
-body.vscode-dark .cyber-input::placeholder,
-body.vscode-light .cyber-input::placeholder,
-body.vscode-high-contrast .cyber-input::placeholder {
-  color: var(--vscode-input-placeholderForeground, var(--ui-text-muted));
-}
-
-body.vscode-dark .cyber-input:focus,
-body.vscode-high-contrast .cyber-input:focus {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: var(--vscode-focusBorder, var(--color-brand-indigo));
-  box-shadow: 0 0 0 2px var(--vscode-focusBorder, rgba(122, 162, 247, 0.2));
-}
-
-body.vscode-light .cyber-input:focus {
-  background: rgba(0, 0, 0, 0.08);
-  border-color: var(--vscode-focusBorder, var(--color-brand-indigo));
-  box-shadow: 0 0 0 2px var(--vscode-focusBorder, rgba(122, 162, 247, 0.2));
+  border-color: var(--ui-input-focus-border);
+  box-shadow: 0 0 0 2px var(--ui-input-focus-shadow);
+  background: var(--ui-input-focus-bg);
 }
 
 /* ============================================================================
@@ -519,11 +535,11 @@ body.vscode-light .cyber-input:focus {
 @keyframes pulse-glow {
   0%, 100% {
     opacity: 0.4;
-    filter: drop-shadow(0 0 2px rgba(99, 102, 241, 0.3));
+    filter: drop-shadow(0 0 2px var(--ui-pulse-glow-color));
   }
   50% {
     opacity: 0.9;
-    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.7));
+    filter: drop-shadow(0 0 10px var(--ui-pulse-glow-color));
   }
 }
 

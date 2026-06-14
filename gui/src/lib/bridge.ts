@@ -543,3 +543,4 @@ export function destroyBridge(): void {
   initialized = false;
   vsCodeApiInstance = null;
 }
+

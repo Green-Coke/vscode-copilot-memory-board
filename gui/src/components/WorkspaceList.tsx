@@ -5,10 +5,12 @@
 import { useState, useMemo } from "react";
 import type { Workspace, SortOption, UiPreferences } from "@memory-board/core";
 import { cn } from "@/lib/utils";
-import { FolderGit2, Clock, ChevronRight, Search, X } from "lucide-react";
+import { FolderGit2, Clock, ChevronRight, Search, X, Link, FolderOpen } from "lucide-react";
 import { PinnedButton } from "@/components/PinnedButton";
 import { SortControl } from "@/components/SortControl";
 import { sortItems } from "@/lib/sort-utils";
+import * as ContextMenu from "@radix-ui/react-context-menu";
+import { useCopyPath, useRevealInOs } from "@/hooks/use-bridge";
 
 interface WorkspaceListProps {
   /** 工作区列表 */
@@ -52,6 +54,8 @@ export function WorkspaceList({
   onPreferencesChange,
 }: WorkspaceListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const copyPath = useCopyPath();
+  const revealInOs = useRevealInOs();
 
   // ---------------------------------------------------------------------------
   // 搜索过滤 + 排序 + 钉选分组
@@ -231,83 +235,151 @@ export function WorkspaceList({
     const isSelected = selectedId === workspace.id;
     const workspacePinned = pinnedIds.includes(workspace.id);
 
+    // 复制工作区目录的绝对路径
+    const handleCopyPath = async (e: Event) => {
+      e.stopPropagation();
+      if (workspace.path) {
+        try {
+          await copyPath(workspace.path, false);
+        } catch (err) {
+          console.error("Failed to copy path:", err);
+        }
+      }
+    };
+
+    // 在系统资源管理器中打开工作区目录
+    const handleRevealInOs = async (e: Event) => {
+      e.stopPropagation();
+      if (workspace.path) {
+        try {
+          await revealInOs(workspace.path);
+        } catch (err) {
+          console.error("Failed to reveal in OS:", err);
+        }
+      }
+    };
+
     return (
-      <div
-        key={workspace.id}
-        data-testid={`workspace-item-${workspace.id}`}
-        className={cn(
-          "group relative flex items-center gap-2 px-3 py-3 rounded-lg text-left select-none outline-none cursor-pointer",
-          "transition-all duration-300 ease-out",
-          "animate-fade-in",
-          isSelected
-            ? "bg-selected-bg border border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
-            : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
-        )}
-        style={{ animationDelay: `${index * 40}ms` }}
-        onClick={() => onSelect(workspace)}
-        title={workspace.path}
-      >
-        {/* Visual Glow line on left border for selected item */}
-        {isSelected && (
-          <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
-        )}
+      <ContextMenu.Root key={workspace.id}>
+        <ContextMenu.Trigger asChild>
+          <div
+            data-testid={`workspace-item-${workspace.id}`}
+            className={cn(
+              "group relative flex items-center gap-2 px-3 py-3 rounded-lg text-left select-none outline-none cursor-pointer",
+              "transition-all duration-300 ease-out",
+              "animate-fade-in",
+              isSelected
+                ? "bg-selected-bg border border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
+                : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
+            )}
+            style={{ animationDelay: `${index * 40}ms` }}
+            onClick={() => onSelect(workspace)}
+            title={workspace.path}
+          >
+            {/* Visual Glow line on left border for selected item */}
+            {isSelected && (
+              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
+            )}
 
-        {/* 钉选指示条，仅钉选项显示 */}
-        {isPinned && (
-          <span className="absolute left-0 top-1 bottom-1 w-[2px] rounded bg-amber-500/70" />
-        )}
+            {/* 钉选指示条，仅钉选项显示 */}
+            {isPinned && (
+              <span className="absolute left-0 top-1 bottom-1 w-[2px] rounded bg-amber-500/70" />
+            )}
 
-        {/* Left Folder icon container with status */}
-        <div
-          className={cn(
-            "relative flex items-center justify-center w-8.5 h-8.5 rounded-lg border",
-            "transition-all duration-300",
-            isSelected
-              ? "bg-selected-bg-strong border-selected-border text-selected-text"
-              : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
-          )}
-        >
-          <FolderGit2 className="w-4 h-4" />
-        </div>
+            {/* Left Folder icon container with status */}
+            <div
+              className={cn(
+                "relative flex items-center justify-center w-8.5 h-8.5 rounded-lg border",
+                "transition-all duration-300",
+                isSelected
+                  ? "bg-selected-bg-strong border-selected-border text-selected-text"
+                  : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
+              )}
+            >
+              <FolderGit2 className="w-4 h-4" />
+            </div>
 
-        {/* Central workspace details */}
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold font-display truncate tracking-wide">
-            {workspace.name}
-          </p>
-          <div className="flex items-center gap-2 mt-1 font-mono text-[9px] text-text-secondary">
-            <span className="flex items-center gap-1 font-semibold text-brand-indigo/80">
-              {workspace.sessionCount} sessions
-            </span>
-            <span className="text-text-muted">•</span>
-            <span className="flex items-center gap-0.5 text-text-muted">
-              <Clock className="w-2.5 h-2.5" />
-              {formatRelativeTime(workspace.lastModified)}
-            </span>
+            {/* Central workspace details */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold font-display truncate tracking-wide">
+                {workspace.name}
+              </p>
+              <div className="flex items-center gap-2 mt-1 font-mono text-[9px] text-text-secondary">
+                <span className="flex items-center gap-1 font-semibold text-brand-indigo/80">
+                  {workspace.sessionCount} sessions
+                </span>
+                <span className="text-text-muted">•</span>
+                <span className="flex items-center gap-0.5 text-text-muted">
+                  <Clock className="w-2.5 h-2.5" />
+                  {formatRelativeTime(workspace.lastModified)}
+                </span>
+              </div>
+              {/* Truncated workspace folder path display */}
+              <span className="block text-[8px] font-mono text-text-muted/65 truncate mt-0.5">
+                {workspace.path}
+              </span>
+            </div>
+
+            {/* 钉选按钮 */}
+            <PinnedButton
+              pinned={workspacePinned}
+              onClick={() => togglePin(workspace.id)}
+              testIdScope="workspace"
+              itemId={workspace.id}
+            />
+
+            {/* Chevron marker indicator */}
+            <ChevronRight
+              className={cn(
+                "w-3.5 h-3.5 text-text-muted transition-all duration-300",
+                "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
+                isSelected && "opacity-100 translate-x-0 text-selected-text"
+              )}
+            />
           </div>
-          {/* Truncated workspace folder path display */}
-          <span className="block text-[8px] font-mono text-text-muted/65 truncate mt-0.5">
-            {workspace.path}
-          </span>
-        </div>
-
-        {/* 钉选按钮 */}
-        <PinnedButton
-          pinned={workspacePinned}
-          onClick={() => togglePin(workspace.id)}
-          testIdScope="workspace"
-          itemId={workspace.id}
-        />
-
-        {/* Chevron marker indicator */}
-        <ChevronRight
-          className={cn(
-            "w-3.5 h-3.5 text-text-muted transition-all duration-300",
-            "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
-            isSelected && "opacity-100 translate-x-0 text-selected-text"
-          )}
-        />
-      </div>
+        </ContextMenu.Trigger>
+        <ContextMenu.Portal>
+          <ContextMenu.Content
+            className={cn(
+              "min-w-[180px] py-1.5 px-1.5",
+              "rounded-lg border border-border-default/60",
+              "bg-surface-1/95 backdrop-blur-md",
+              "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+              "z-[9999]",
+              "animate-in fade-in-0 zoom-in-95 duration-100"
+            )}
+          >
+            <ContextMenu.Item
+              disabled={!workspace.path}
+              onSelect={handleCopyPath}
+              className={cn(
+                "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+                "outline-none select-none transition-colors",
+                !workspace.path
+                  ? "text-text-muted/40 cursor-not-allowed"
+                  : "text-text-secondary hover:bg-surface-3/60 focus:bg-surface-3/60 hover:text-text-primary"
+              )}
+            >
+              <Link className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1">复制路径</span>
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              disabled={!workspace.path}
+              onSelect={handleRevealInOs}
+              className={cn(
+                "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+                "outline-none select-none transition-colors",
+                !workspace.path
+                  ? "text-text-muted/40 cursor-not-allowed"
+                  : "text-text-secondary hover:bg-surface-3/60 focus:bg-surface-3/60 hover:text-text-primary"
+              )}
+            >
+              <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1">在资源管理器中打开</span>
+            </ContextMenu.Item>
+          </ContextMenu.Content>
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
     );
   }
 }

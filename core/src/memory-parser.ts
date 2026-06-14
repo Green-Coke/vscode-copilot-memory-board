@@ -145,6 +145,8 @@ export class MemoryParser {
           createdAt: stat ? toIso(stat.birthtime ?? stat.ctime) : new Date(0).toISOString(),
           entryCount,
           isRepo: true,
+          // 填充工作区级目录的绝对物理路径，方便右键复制/资源管理器打开
+          absolutePath: repoPath,
         });
         continue;
       }
@@ -169,6 +171,8 @@ export class MemoryParser {
             : new Date(0).toISOString(),
         entryCount,
         isRepo: false,
+        // 填充会话目录的绝对物理路径，方便右键复制/资源管理器打开
+        absolutePath: sessionDir,
       });
     }
 
@@ -486,7 +490,8 @@ export function uriToFsPath(uri: string): string {
   } catch {
     return "";
   }
-  const pathname = parsed.pathname;
+  // 使用 decodeURIComponent 解码 URL 编码的字符（如 Windows 盘符中的 %3A -> :）
+  const pathname = decodeURIComponent(parsed.pathname);
   // Windows 盘符路径形如 "/e:/..."，需要把开头的 / 去掉
   const isWinDrive = /^\/[a-zA-Z]:/.test(pathname);
   const fsPath = isWinDrive ? pathname.slice(1) : pathname;

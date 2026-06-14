@@ -13,7 +13,7 @@ import React from "react";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import {
   Copy, Scissors, ClipboardPaste, Pencil, Trash2,
-  FolderOpen, FolderPlus, FileText, Link, Link2
+  FolderOpen, FolderPlus, FileText, Link
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileTreeNode } from "@/lib/file-tree-types";
@@ -27,7 +27,6 @@ export type ContextMenuAction =
   | "cut"
   | "paste"
   | "copyPath"
-  | "copyRelativePath"
   | "rename"
   | "delete"
   | "revealInOs"
@@ -172,11 +171,6 @@ export function FileTreeContextMenu({
                 icon={Link}
                 label="复制路径"
                 onSelect={() => onAction("copyPath", node)}
-              />
-              <MenuItem
-                icon={Link2}
-                label="复制相对路径"
-                onSelect={() => onAction("copyRelativePath", node)}
               />
             </>
           )}

@@ -5,10 +5,12 @@
 import { useState, useMemo } from "react";
 import type { Session, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Calendar, ChevronRight, Search, X, FolderTree } from "lucide-react";
+import { MessageSquare, Calendar, ChevronRight, Search, X, FolderTree, Link, FolderOpen } from "lucide-react";
 import { PinnedButton } from "@/components/PinnedButton";
 import { SortControl } from "@/components/SortControl";
 import { sortItems } from "@/lib/sort-utils";
+import * as ContextMenu from "@radix-ui/react-context-menu";
+import { useCopyPath, useRevealInOs } from "@/hooks/use-bridge";
 
 interface SessionListProps {
   sessions: Session[];
@@ -45,6 +47,11 @@ export function SessionList({
   onPinnedChange,
 }: SessionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const copyPath = useCopyPath();
+  const revealInOs = useRevealInOs();
+
+  // 查找到工作区级目录的特殊 session 实例，用于右键复制/打开其路径
+  const repoSession = useMemo(() => sessions.find((s) => s.isRepo), [sessions]);
 
   // ---------------------------------------------------------------------------
   // 搜索过滤 + 排序 + 钉选分组
@@ -181,46 +188,109 @@ export function SessionList({
       {/* 工作区级目录独立分区：点击后右侧展示整个工作区的骨架目录，与会话列表视觉分隔 */}
       {onSelectWorkspaceFiles && (
         <div className="px-2.5 pt-2.5">
-          <button
-            onClick={onSelectWorkspaceFiles}
-            className={cn(
-              "group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left select-none outline-none cursor-pointer",
-              "transition-all duration-300 ease-out border",
-              viewingWorkspaceFiles
-                ? "bg-selected-bg border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
-                : "border-transparent hover:bg-surface-3/50 hover:border-border-default text-text-primary"
-            )}
-            title="查看该工作区的记忆文件目录"
-          >
-            {viewingWorkspaceFiles && (
-              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
-            )}
-            <div
-              className={cn(
-                "flex items-center justify-center w-8.5 h-8.5 rounded-lg border shrink-0 transition-all duration-300",
-                viewingWorkspaceFiles
-                  ? "bg-selected-bg-strong border-selected-border text-selected-text"
-                  : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
-              )}
-            >
-              <FolderTree className="w-4 h-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold font-display truncate tracking-wide">
-                工作区级目录
-              </p>
-              <p className="text-[9px] font-mono text-text-secondary mt-0.5 truncate">
-                点击查看该工作区的记忆文件目录
-              </p>
-            </div>
-            <ChevronRight
-              className={cn(
-                "w-3.5 h-3.5 text-text-muted transition-all duration-300",
-                "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
-                viewingWorkspaceFiles && "opacity-100 translate-x-0 text-selected-text"
-              )}
-            />
-          </button>
+          <ContextMenu.Root>
+            <ContextMenu.Trigger asChild>
+              <button
+                onClick={onSelectWorkspaceFiles}
+                className={cn(
+                  "group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left select-none outline-none cursor-pointer",
+                  "transition-all duration-300 ease-out border",
+                  viewingWorkspaceFiles
+                    ? "bg-selected-bg border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
+                    : "border-transparent hover:bg-surface-3/50 hover:border-border-default text-text-primary"
+                )}
+                title="查看该工作区的记忆文件目录"
+              >
+                {viewingWorkspaceFiles && (
+                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
+                )}
+                <div
+                  className={cn(
+                    "flex items-center justify-center w-8.5 h-8.5 rounded-lg border shrink-0 transition-all duration-300",
+                    viewingWorkspaceFiles
+                      ? "bg-selected-bg-strong border-selected-border text-selected-text"
+                      : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
+                  )}
+                >
+                  <FolderTree className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold font-display truncate tracking-wide">
+                    工作区级目录
+                  </p>
+                  <p className="text-[9px] font-mono text-text-secondary mt-0.5 truncate">
+                    点击查看该工作区的记忆文件目录
+                  </p>
+                </div>
+                <ChevronRight
+                  className={cn(
+                    "w-3.5 h-3.5 text-text-muted transition-all duration-300",
+                    "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
+                    viewingWorkspaceFiles && "opacity-100 translate-x-0 text-selected-text"
+                  )}
+                />
+              </button>
+            </ContextMenu.Trigger>
+            <ContextMenu.Portal>
+              <ContextMenu.Content
+                className={cn(
+                  "min-w-[180px] py-1.5 px-1.5",
+                  "rounded-lg border border-border-default/60",
+                  "bg-surface-1/95 backdrop-blur-md",
+                  "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+                  "z-[9999]",
+                  "animate-in fade-in-0 zoom-in-95 duration-100"
+                )}
+              >
+                <ContextMenu.Item
+                  disabled={!repoSession?.absolutePath}
+                  onSelect={async (e) => {
+                    e.stopPropagation();
+                    if (repoSession?.absolutePath) {
+                      try {
+                        await copyPath(repoSession.absolutePath, false);
+                      } catch (err) {
+                        console.error("Failed to copy path:", err);
+                      }
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+                    "outline-none select-none transition-colors",
+                    !repoSession?.absolutePath
+                      ? "text-text-muted/40 cursor-not-allowed"
+                      : "text-text-secondary hover:bg-surface-3/60 focus:bg-surface-3/60 hover:text-text-primary"
+                  )}
+                >
+                  <Link className="w-3.5 h-3.5 shrink-0" />
+                  <span className="flex-1">复制路径</span>
+                </ContextMenu.Item>
+                <ContextMenu.Item
+                  disabled={!repoSession?.absolutePath}
+                  onSelect={async (e) => {
+                    e.stopPropagation();
+                    if (repoSession?.absolutePath) {
+                      try {
+                        await revealInOs(repoSession.absolutePath);
+                      } catch (err) {
+                        console.error("Failed to reveal in OS:", err);
+                      }
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+                    "outline-none select-none transition-colors",
+                    !repoSession?.absolutePath
+                      ? "text-text-muted/40 cursor-not-allowed"
+                      : "text-text-secondary hover:bg-surface-3/60 focus:bg-surface-3/60 hover:text-text-primary"
+                  )}
+                >
+                  <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+                  <span className="flex-1">在资源管理器中打开</span>
+                </ContextMenu.Item>
+              </ContextMenu.Content>
+            </ContextMenu.Portal>
+          </ContextMenu.Root>
           {/* 分区分隔线，把它和下面的 session 列表在视觉上分开 */}
           <div className="mt-2.5 mb-1 flex items-center gap-2 px-1">
             <div className="h-px flex-1 bg-border-subtle" />
@@ -268,78 +338,146 @@ export function SessionList({
     const isSelected = selectedId === session.id;
     const sessionPinned = pinnedIds.includes(session.id);
 
+    // 复制会话物理目录的路径
+    const handleCopyPath = async (e: Event) => {
+      e.stopPropagation();
+      if (session.absolutePath) {
+        try {
+          await copyPath(session.absolutePath, false);
+        } catch (err) {
+          console.error("Failed to copy path:", err);
+        }
+      }
+    };
+
+    // 在系统资源管理器中打开会话物理目录
+    const handleRevealInOs = async (e: Event) => {
+      e.stopPropagation();
+      if (session.absolutePath) {
+        try {
+          await revealInOs(session.absolutePath);
+        } catch (err) {
+          console.error("Failed to reveal in OS:", err);
+        }
+      }
+    };
+
     return (
-      <div
-        key={session.id}
-        data-testid={`session-item-${session.id}`}
-        onClick={() => onSelect(session)}
-        className={cn(
-          "group relative flex items-center gap-3 px-3 py-3 rounded-lg text-left select-none outline-none cursor-pointer",
-          "transition-all duration-300 ease-out",
-          "animate-fade-in",
-          isSelected
-            ? "bg-selected-bg border border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
-            : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
-        )}
-        style={{ animationDelay: `${index * 40}ms` }}
-      >
-        {/* Visual Glow line on left border for selected item */}
-        {isSelected && (
-          <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
-        )}
+      <ContextMenu.Root key={session.id}>
+        <ContextMenu.Trigger asChild>
+          <div
+            data-testid={`session-item-${session.id}`}
+            onClick={() => onSelect(session)}
+            className={cn(
+              "group relative flex items-center gap-3 px-3 py-3 rounded-lg text-left select-none outline-none cursor-pointer",
+              "transition-all duration-300 ease-out",
+              "animate-fade-in",
+              isSelected
+                ? "bg-selected-bg border border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
+                : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
+            )}
+            style={{ animationDelay: `${index * 40}ms` }}
+          >
+            {/* Visual Glow line on left border for selected item */}
+            {isSelected && (
+              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
+            )}
 
-        {/* 钉选指示条，仅钉选项显示 */}
-        {isPinned && (
-          <span className="absolute left-0 top-1 bottom-1 w-[2px] rounded bg-amber-500/70" />
-        )}
+            {/* 钉选指示条，仅钉选项显示 */}
+            {isPinned && (
+              <span className="absolute left-0 top-1 bottom-1 w-[2px] rounded bg-amber-500/70" />
+            )}
 
-        {/* Left speech bubble container */}
-        <div
-          className={cn(
-            "flex items-center justify-center w-8.5 h-8.5 rounded-lg border shrink-0",
-            "transition-all duration-300",
-            isSelected
-              ? "bg-selected-bg-strong border-selected-border text-selected-text"
-              : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
-          )}
-        >
-          <MessageSquare className="w-4 h-4" />
-        </div>
+            {/* Left speech bubble container */}
+            <div
+              className={cn(
+                "flex items-center justify-center w-8.5 h-8.5 rounded-lg border shrink-0",
+                "transition-all duration-300",
+                isSelected
+                  ? "bg-selected-bg-strong border-selected-border text-selected-text"
+                  : "bg-surface-2 border-border-default text-text-secondary group-hover:text-brand-indigo group-hover:border-brand-indigo/30"
+              )}
+            >
+              <MessageSquare className="w-4 h-4" />
+            </div>
 
-        {/* Session title and metadata */}
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold font-display truncate tracking-wide">
-            {session.title}
-          </p>
-          <div className="flex items-center gap-2 mt-1.5 font-mono text-[9px] text-text-secondary">
-            <span className="flex items-center gap-1 font-semibold text-brand-indigo/80">
-              {session.entryCount} entries
-            </span>
-            <span className="text-text-muted">•</span>
-            <span className="flex items-center gap-0.5 text-text-muted">
-              <Calendar className="w-2.5 h-2.5" />
-              {formatDate(session.createdAt)}
-            </span>
+            {/* Session title and metadata */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold font-display truncate tracking-wide">
+                {session.title}
+              </p>
+              <div className="flex items-center gap-2 mt-1.5 font-mono text-[9px] text-text-secondary">
+                <span className="flex items-center gap-1 font-semibold text-brand-indigo/80">
+                  {session.entryCount} entries
+                </span>
+                <span className="text-text-muted">•</span>
+                <span className="flex items-center gap-0.5 text-text-muted">
+                  <Calendar className="w-2.5 h-2.5" />
+                  {formatDate(session.createdAt)}
+                </span>
+              </div>
+            </div>
+
+            {/* 钉选按钮 */}
+            <PinnedButton
+              pinned={sessionPinned}
+              onClick={() => togglePin(session.id)}
+              testIdScope="session"
+              itemId={session.id}
+            />
+
+            {/* Chevron marker indicator */}
+            <ChevronRight
+              className={cn(
+                "w-3.5 h-3.5 text-text-muted transition-all duration-300",
+                "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
+                isSelected && "opacity-100 translate-x-0 text-selected-text"
+              )}
+            />
           </div>
-        </div>
-
-        {/* 钉选按钮 */}
-        <PinnedButton
-          pinned={sessionPinned}
-          onClick={() => togglePin(session.id)}
-          testIdScope="session"
-          itemId={session.id}
-        />
-
-        {/* Chevron marker indicator */}
-        <ChevronRight
-          className={cn(
-            "w-3.5 h-3.5 text-text-muted transition-all duration-300",
-            "opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0",
-            isSelected && "opacity-100 translate-x-0 text-selected-text"
-          )}
-        />
-      </div>
+        </ContextMenu.Trigger>
+        <ContextMenu.Portal>
+          <ContextMenu.Content
+            className={cn(
+              "min-w-[180px] py-1.5 px-1.5",
+              "rounded-lg border border-border-default/60",
+              "bg-surface-1/95 backdrop-blur-md",
+              "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+              "z-[9999]",
+              "animate-in fade-in-0 zoom-in-95 duration-100"
+            )}
+          >
+            <ContextMenu.Item
+              disabled={!session.absolutePath}
+              onSelect={handleCopyPath}
+              className={cn(
+                "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+                "outline-none select-none transition-colors",
+                !session.absolutePath
+                  ? "text-text-muted/40 cursor-not-allowed"
+                  : "text-text-secondary hover:bg-surface-3/60 focus:bg-surface-3/60 hover:text-text-primary"
+              )}
+            >
+              <Link className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1">复制路径</span>
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              disabled={!session.absolutePath}
+              onSelect={handleRevealInOs}
+              className={cn(
+                "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+                "outline-none select-none transition-colors",
+                !session.absolutePath
+                  ? "text-text-muted/40 cursor-not-allowed"
+                  : "text-text-secondary hover:bg-surface-3/60 focus:bg-surface-3/60 hover:text-text-primary"
+              )}
+            >
+              <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1">在资源管理器中打开</span>
+            </ContextMenu.Item>
+          </ContextMenu.Content>
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
     );
   }
 }

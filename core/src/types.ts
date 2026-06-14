@@ -55,6 +55,11 @@ export interface Session {
    * 默认 false，仅当子目录名为 "repo" 时为 true。
    */
   isRepo?: boolean;
+  /**
+   * Session 在磁盘上对应的 memories 物理目录的绝对路径（可选）。
+   * 用于右键菜单复制路径和在资源管理器中打开。
+   */
+  absolutePath?: string;
 }
 
 /**

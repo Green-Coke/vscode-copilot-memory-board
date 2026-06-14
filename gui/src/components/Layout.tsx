@@ -204,7 +204,7 @@ export function AppHeader({
 
       <div className="flex items-center gap-3">
         {/* Glowing Neural Network SVG Logo */}
-        <div className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-surface-2 border border-border-default shadow-[0_0_15px_-3px_rgba(99,102,241,0.2)] shrink-0">
+        <div className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-surface-2 border border-border-default shadow-[0_0_15px_-3px_var(--ui-logo-glow-color)] shrink-0">
           <svg viewBox="0 0 100 100" className="w-6 h-6 text-brand-indigo animate-brain-glow" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M50 20 C32 20, 24 35, 24 50 C24 65, 32 80, 50 80 C68 80, 76 65, 76 50 C76 35, 68 20, 50 20 Z" />
             <path d="M50 20 L50 80" />

@@ -459,13 +459,6 @@ export function FileTree({ data, selectedNode, onSelectFile, rootPath }: FileTre
             }
             break;
           }
-          case "copyRelativePath": {
-            if (node) {
-              const absPath = node.absolutePath ?? resolveNodeAbsolutePath(node);
-              if (absPath) await copyPath(absPath, true);
-            }
-            break;
-          }
           case "rename": {
             if (node) {
               // 激活重命名模式，FileTreeNodeComponent 会根据 renamingPath 显示输入框
