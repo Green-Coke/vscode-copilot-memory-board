@@ -114,6 +114,8 @@ export function FileTreeContextMenu({
 
       <ContextMenu.Portal>
         <ContextMenu.Content
+          /* 设置 collisionPadding 防止在靠左或靠边点击时菜单被视口边缘（如左侧边栏）遮挡 */
+          collisionPadding={10}
           className={cn(
             "min-w-[180px] py-1.5 px-1.5",
             "rounded-lg border border-border-default/60",
