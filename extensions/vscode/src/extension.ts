@@ -67,14 +67,22 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // 从工作区持久状态中读取保存的激活位置，默认是主侧栏 "sidebar"
+  // 注意：如果上次保存的位置是 "editor"（编辑器面板），启动时仍回退到 sidebar，
+  // 因为编辑器面板在 VS Code 重启后会被销毁，而侧栏视图始终可用。
+  // 用户可以随时通过 "Move to Editor" 命令再次打开编辑器面板。
   const savedLocation = context.workspaceState.get<string>(
     ACTIVE_LOCATION_CONTEXT_KEY,
     "sidebar"
   );
+  // 编辑器面板是临时的，VS Code 重启后 panel 实例会被销毁；
+  // 回退到 sidebar 确保用户始终能看到扩展入口。
+  const effectiveLocation = savedLocation === "editor" ? "sidebar" : savedLocation;
+  outputChannel.appendLine(`[Memory Board Diagnostics] savedLocation from workspaceState: "${savedLocation}"`);
+  outputChannel.appendLine(`[Memory Board Diagnostics] effectiveLocation (after fallback): "${effectiveLocation}"`);
   void vscode.commands.executeCommand(
     "setContext",
     ACTIVE_LOCATION_CONTEXT_KEY,
-    savedLocation
+    effectiveLocation
   );
 
   /**
@@ -165,6 +173,9 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   console.log("[Memory Board] Extension activated successfully.");
+  outputChannel.appendLine("[Memory Board] Extension activated successfully.");
+  outputChannel.appendLine(`[Memory Board Diagnostics] Final activeLocation context: "${effectiveLocation}" (original saved: "${savedLocation}")`);
+  outputChannel.appendLine(`[Memory Board Diagnostics] Views registered: memoryBoard.mainView (when=sidebar), memoryBoard.bottomPanelView (when=panel)`);
 }
 
 /**
