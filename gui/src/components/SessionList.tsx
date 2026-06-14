@@ -53,6 +53,8 @@ export function SessionList({
   // ---------------------------------------------------------------------------
   const { pinned, unpinned } = useMemo(() => {
     const filtered = sessions.filter((session) =>
+      // 过滤掉特殊的 repo 工作区级目录 session，因为该入口已单独在列表最上方作为独立分区渲染
+      !session.isRepo &&
       session.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
     const sortedAll = sortItems(filtered, sortOption, (s) => s.title);

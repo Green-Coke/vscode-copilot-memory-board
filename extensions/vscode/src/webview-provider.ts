@@ -36,6 +36,8 @@ import type {
 // 创建专属的输出通道，使得在宿主 IDE 的“输出”下拉框中可以找到 Memory Board 的日志
 export const outputChannel = vscode.window.createOutputChannel("Memory Board");
 
+import { readClipboardFilePaths } from "./clipboard-files";
+
 /**
  * 全局 UI 偏好在 globalState 中的 key
  * 属于跨工作区偏好（例如预览总开关），存储在 globalState
