@@ -1,63 +1,45 @@
-# vscode-copilot-memory-board
+# Copilot Memory Board
 
-> Visualize and manage GitHub Copilot's long-term memory as an interactive board.
+> **English** | [中文](./README-zh.md)
 
-## 📦 Project Structure
+**Visualize and manage GitHub Copilot's memory as an interactive board in VS Code.**
 
-This is a **pnpm monorepo** designed for maximum code reuse across multiple platforms.
+GitHub Copilot accumulates "memories" across conversations — recording your project context, coding preferences, architectural decisions, and other long-term information. These memories are stored locally as Markdown files, but there's no built-in interface to browse or manage them.
 
-```
-vscode-copilot-memory-board/
-├── docs/                  # Design docs, protocol specs, research notes
-├── core/                  # Shared core logic (pure Node.js/TS)
-├── gui/                   # Shared frontend UI (React + Tailwind + shadcn/ui)
-├── extensions/
-│   ├── vscode/            # VS Code extension shell
-│   └── desktop/           # (Future) Standalone desktop app
-├── package.json           # Root workspace config
-└── pnpm-workspace.yaml    # Workspace package definitions
-```
+**Copilot Memory Board** fills that gap: it provides an adaptive kanban-style board in the VS Code sidebar, letting you browse, search, and manage all Copilot memories in a three-level hierarchy: **Workspace → Session → Memory Entry**.
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) >= 20.0.0
-- [pnpm](https://pnpm.io/) >= 9.0.0
+## ✨ Features
 
-### Install & Build
+### 📂 Workspace-Level Memory Browsing
+- Automatically scans all local workspaces that contain Copilot memory data
+- Displays summary info for each workspace: session count, last modified time, etc.
+- Supports a "Workspace Root Directory" view — browse repo-level memories shared across sessions
 
-```bash
-# Install all dependencies
-pnpm install
+### 💬 Session-Level Memory Browsing
+- Filters sessions by workspace, showing session title, creation time, and entry count
+- Supports sorting (by time, name) and search filtering
+- Session titles are auto-derived from the chat's `customTitle` or the first user message
 
-# Build all packages
-pnpm build
+### 📝 Memory Entry Details
+- Recursively scans all files and subdirectories under a session directory, displayed as a tree structure
+- Supports Markdown rendering preview and raw text viewing
 
-# Run GUI in development mode
-pnpm --filter @memory-board/gui dev
-```
+<p align="center">
+  <img src="./docs/assets/session-memories.png" alt="Session Memories View" width="160" />
+  <br/>
+  <em>Session-level memory browsing — see what Copilot remembered in a single session</em>
+</p>
 
-### VS Code Extension Development
+<p align="center">
+  <img src="./docs/assets/workspace-memories.png" alt="Workspace Memories View" width="160" />
+  <br/>
+  <em>Workspace-level memory browsing — view repo-level memories shared across sessions</em>
+</p>
 
-1. Open this project in VS Code
-2. Press `F5` to launch the Extension Development Host
-3. Look for the **Memory Board** icon in the Activity Bar sidebar
-
-## 📚 Documentation
-
-- [Architecture Design](./docs/architecture.md)
-- [Communication Protocol](./docs/protocol.md)
-- [Copilot LTM Research](./docs/research.md)
-
-## 🛠️ Tech Stack
-
-| Layer | Technologies |
-|-------|-------------|
-| Core Logic | TypeScript, Node.js |
-| Frontend UI | React 19, Vite 6, Tailwind CSS v4, shadcn/ui |
-| VS Code Extension | VS Code Extension API, WebviewViewProvider |
-| Desktop (Future) | Electron / Tauri |
+---
 
 ## 📄 License
 
-MIT
+[MIT](./LICENSE)

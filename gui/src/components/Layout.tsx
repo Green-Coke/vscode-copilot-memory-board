@@ -29,7 +29,6 @@ const isVscode = getBridgeEnvironment() === "vscode";
 interface NarrowHeaderProps {
   currentView: ViewMode;
   selectedWorkspace: any;
-  selectedSession: any;
   onBackToWorkspaces?: () => void;
   onBackToSessions?: () => void;
   /** 当前是否正处于工作区级目录视图 */
@@ -42,12 +41,11 @@ interface NarrowHeaderProps {
  * 窄屏单栏模式下专用的顶部导航返回条。
  * 解决了面包屑路径过长、容易发生换行或重叠的问题。
  * - Sessions 视图下显示：[<-] 工作区名 + 排序操作
- * - Entries 视图下显示：[<-] 会话标题（或工作区级目录时统一显示 Workspace Memories）
+ * - Entries 视图下显示：[<-] Session Memories（或工作区级目录时统一显示 Workspace Memories）
  */
 function NarrowHeader({
   currentView,
   selectedWorkspace,
-  selectedSession,
   onBackToWorkspaces,
   onBackToSessions,
   viewingWorkspaceFiles = false,
@@ -56,9 +54,13 @@ function NarrowHeader({
   if (currentView === "workspaces") return null;
 
   const handleBack = currentView === "entries" ? onBackToSessions : onBackToWorkspaces;
-  // 工作区级目录视图统一显示 "Workspace Memories"，不再拼接工作区名
+  // 计算窄屏顶部返回导航栏的标题文字：
+  // - 当处于 entries 视图（详情页）时：
+  //   - 若为工作区级目录视图（viewingWorkspaceFiles 为真），统一显示 "Workspace Memories"
+  //   - 若为具体会话视图（viewingWorkspaceFiles 为假），统一显示 "Session Memories"，避免直接显示过长或重复的会话标题
+  // - 当处于其他视图时，显示当前选中的工作区名称
   const title = currentView === "entries"
-    ? (viewingWorkspaceFiles ? "Workspace Memories" : selectedSession?.title)
+    ? (viewingWorkspaceFiles ? "Workspace Memories" : "Session Memories")
     : selectedWorkspace?.name;
 
   return (
@@ -411,7 +413,6 @@ export function AdaptiveLayout({
   onSelectRepo,
   onBackToRepos,
   onBackToSessions,
-  selectedSession,
   viewingRepoFiles,
   sessionSortAction,
 }: LayoutProps) {
@@ -476,7 +477,6 @@ export function AdaptiveLayout({
         <NarrowHeader
           currentView={currentView}
           selectedWorkspace={selectedRepo as any}
-          selectedSession={selectedSession}
           onBackToWorkspaces={onBackToRepos as any}
           onBackToSessions={onBackToSessions}
           viewingWorkspaceFiles={viewingRepoFiles as any}
