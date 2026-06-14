@@ -203,7 +203,7 @@ describe("MemoryParser.getSessionsByWorkspace", () => {
     expect(repoSession!.workspaceId).toBe(WORKSPACE_ID);
   });
 
-  it("repo session 的 entryCount 应为 2（2 个 .md 文件）", async () => {
+  it("repo session 的 entryCount 应为 2（2 个任意类型的文件）", async () => {
     const parser = new MemoryParser({ basePath: tmpDir });
     const sessions = await parser.getSessionsByWorkspace(WORKSPACE_ID);
     const repoSession = sessions.find((s) => s.isRepo === true);
@@ -309,6 +309,82 @@ describe("MemoryParser.readMemoryContent", () => {
       WORKSPACE_ID,
     );
     expect(entries).toHaveLength(0);
+  });
+
+  // ---------------------------------------------------------------------------
+  // 递归扫描：目录与子目录都应该被读取
+  // ---------------------------------------------------------------------------
+  describe("递归扫描子目录", () => {
+    beforeEach(() => {
+      // 在 repo session 下追加一个嵌套子目录结构：
+      //   repo/
+      //     gui-mock-data-flow.md       (既有)
+      //     vscode-webview-fix.md       (既有)
+      //     notes/
+      //       nested.md
+      //       deep/
+      //         deep.md
+      const repoDir = path.join(
+        tmpDir,
+        WORKSPACE_ID,
+        "GitHub.copilot-chat",
+        "memory-tool",
+        "memories",
+        "repo",
+      );
+      const notesDir = path.join(repoDir, "notes");
+      const deepDir = path.join(notesDir, "deep");
+      fs.mkdirSync(deepDir, { recursive: true });
+      fs.writeFileSync(path.join(notesDir, "nested.md"), "# Nested\n\n子目录文件", "utf8");
+      fs.writeFileSync(path.join(deepDir, "deep.md"), "# Deep\n\n更深层的文件", "utf8");
+    });
+
+    it("readMemoryContent 应返回目录节点（isDirectory=true）", async () => {
+      const parser = new MemoryParser({ basePath: tmpDir });
+      const entries = await parser.readMemoryContent(
+        DEFAULT_SESSION_IDS.REPO,
+        WORKSPACE_ID,
+      );
+      const dirs = entries.filter((e) => e.isDirectory);
+      // 至少应包含 notes 与 notes/deep 两个目录节点
+      const relativePaths = dirs.map((d) => d.relativePath);
+      expect(relativePaths).toContain("notes");
+      expect(relativePaths).toContain("notes/deep");
+    });
+
+    it("子目录内的文件也应被读取，relativePath 反映层级结构", async () => {
+      const parser = new MemoryParser({ basePath: tmpDir });
+      const entries = await parser.readMemoryContent(
+        DEFAULT_SESSION_IDS.REPO,
+        WORKSPACE_ID,
+      );
+      const files = entries.filter((e) => !e.isDirectory);
+      const relativePaths = files.map((f) => f.relativePath);
+      expect(relativePaths).toContain("notes/nested.md");
+      expect(relativePaths).toContain("notes/deep/deep.md");
+      // 同时保证顶层文件依然存在
+      expect(relativePaths).toContain("gui-mock-data-flow.md");
+    });
+
+    it("子目录中文件的内容应被正确读取", async () => {
+      const parser = new MemoryParser({ basePath: tmpDir });
+      const entries = await parser.readMemoryContent(
+        DEFAULT_SESSION_IDS.REPO,
+        WORKSPACE_ID,
+      );
+      const deep = entries.find((e) => e.relativePath === "notes/deep/deep.md");
+      expect(deep).toBeDefined();
+      expect(deep!.content).toContain("更深层的文件");
+      expect(path.isAbsolute(deep!.sourceFile)).toBe(true);
+    });
+
+    it("countFiles（经 getSessionsByWorkspace 的 entryCount）应递归统计子目录中的文件", async () => {
+      const parser = new MemoryParser({ basePath: tmpDir });
+      const sessions = await parser.getSessionsByWorkspace(WORKSPACE_ID);
+      const repoSession = sessions.find((s) => s.isRepo === true);
+      // repo 根目录下原本 2 个 .md，加上 notes/nested.md 和 notes/deep/deep.md = 4
+      expect(repoSession!.entryCount).toBe(4);
+    });
   });
 });
 

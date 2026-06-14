@@ -11,7 +11,7 @@
  *
  * 真实数据来源（已废弃 mock）：
  * - MemoryEntry.sourceFile 字段已是绝对路径
- * - timestamp 字段（.md 文件的 mtime）映射为 updatedAt / createdAt
+ * - timestamp 字段（文件的 mtime）映射为 updatedAt / createdAt；fileType 根据扩展名推断
  *
  * 与原 MockFsNode 的差异：
  * - 新增 absolutePath 字段：完整磁盘路径，用于 bridge openFile 时传 path

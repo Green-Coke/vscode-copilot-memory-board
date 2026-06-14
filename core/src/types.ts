@@ -59,20 +59,35 @@ export interface Session {
 
 /**
  * Represents a single memory entry (a piece of remembered context).
+ *
+ * 自 v0.0.2 起，readMemoryContent 会递归扫描 session 目录下的所有子目录与文件，
+ * 因此 MemoryEntry 既可能表示一个文件，也可能表示一个目录节点（isDirectory=true）。
+ * 上层 GUI（entriesToFileTree）会依据 relativePath 将扁平列表重构为多层树。
  */
 export interface MemoryEntry {
   /** Unique identifier for the entry */
   id: string;
   /** Parent session ID */
   sessionId: string;
-  /** The actual memory content text */
+  /** The actual memory content text（目录节点为空字符串） */
   content: string;
   /** Category classification of the memory */
   category: MemoryCategory;
   /** ISO 8601 timestamp */
   timestamp: string;
-  /** Original source file name */
+  /**
+   * Original source file absolute path（绝对路径，供 vscode.workspace.openTextDocument 使用）。
+   * 目录节点该字段为目录的绝对路径。
+   */
   sourceFile: string;
+  /**
+   * 相对于 session 根目录的路径，使用 POSIX 风格分隔符（"/"）。
+   * 顶层文件 / 目录就只是文件名；子目录中的文件形如 "subdir/notes.md"。
+   * 用于让 entriesToFileTree 在 GUI 端重建目录层级结构。
+   */
+  relativePath: string;
+  /** 是否为目录节点。true 表示这是一个文件夹（无 content），false / undefined 表示文件 */
+  isDirectory?: boolean;
 }
 
 /**

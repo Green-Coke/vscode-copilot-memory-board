@@ -137,7 +137,7 @@ export class MemoryParser {
         // 特殊的"工作区级目录" session
         const repoPath = path.join(memoriesDir, entry.name);
         const stat = await this.safeStat(repoPath);
-        const entryCount = await this.countMarkdownFiles(repoPath);
+        const entryCount = await this.countFiles(repoPath);
         sessions.push({
           id: DEFAULT_SESSION_IDS.REPO,
           workspaceId,
@@ -155,7 +155,7 @@ export class MemoryParser {
         continue;
       }
       const sessionDir = path.join(memoriesDir, entry.name);
-      const entryCount = await this.countMarkdownFiles(sessionDir);
+      const entryCount = await this.countFiles(sessionDir);
       const meta = await this.tryReadSessionMetadata(workspaceId, decoded);
       const dirStat = await this.safeStat(sessionDir);
       sessions.push({
@@ -176,7 +176,13 @@ export class MemoryParser {
   }
 
   /**
-   * 读取指定 session 下所有 memory 条目（.md 文件）。
+   * 读取指定 session 下所有 memory 条目（包括任意类型的普通文件：.md / .json / .png …，
+   * 也包含其所在的子目录节点）。
+   *
+   * 自 v0.0.2 起改为递归扫描：session 目录下的子目录也会被遍历，
+   * 每个目录会产出一个 isDirectory=true 的 MemoryEntry，每个文件产出普通条目，
+   * 通过 relativePath 字段表达其在 session 目录内的相对路径（POSIX 风格）。
+   * 上层 GUI 用 relativePath 重建为多层 FileTreeNode 树。
    *
    * 推荐的调用方式：先用 getSessionsByWorkspace 拿到候选 session.id（或 DEFAULT_SESSION_IDS.REPO），
    * 然后传入该 id 读取文件。对于"工作区级目录" session，需要传 workspaceId 才能定位到 memories/repo。
@@ -193,34 +199,70 @@ export class MemoryParser {
     if (!sessionDir) {
       return [];
     }
-    const entries = await this.safeReadDir(sessionDir);
     const result: MemoryEntry[] = [];
+    await this.scanDirRecursive(sessionDir, "", sessionId, result);
+    return result;
+  }
+
+  /**
+   * 递归扫描目录，把文件与子目录都加入 result。
+   *
+   * @param absoluteDir 当前正在扫描的绝对路径
+   * @param relativeDir 相对 session 根目录的路径（POSIX 风格，顶层为空字符串）
+   * @param sessionId 所属 session ID（用于组装 entry.id）
+   * @param result 输出参数：累积所有 MemoryEntry
+   */
+  private async scanDirRecursive(
+    absoluteDir: string,
+    relativeDir: string,
+    sessionId: string,
+    result: MemoryEntry[],
+  ): Promise<void> {
+    const entries = await this.safeReadDir(absoluteDir);
 
     for (const entry of entries) {
-      if (entry.type !== "file" || !entry.name.toLowerCase().endsWith(".md")) {
+      // 组装相对路径（POSIX 风格），便于跨平台使用 / 分隔
+      const relativePath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+      const fullPath = path.join(absoluteDir, entry.name);
+      const stat = await this.safeStat(fullPath);
+      const isoTime = stat ? toIso(stat.mtime) : new Date(0).toISOString();
+
+      if (entry.type === "directory") {
+        // 目录节点：无 content，记录路径与时间戳，递归扫描其内部
+        result.push({
+          id: `${sessionId}::${relativePath}`,
+          sessionId,
+          content: "",
+          category: "unknown",
+          timestamp: isoTime,
+          sourceFile: fullPath,
+          relativePath,
+          isDirectory: true,
+        });
+        await this.scanDirRecursive(fullPath, relativePath, sessionId, result);
         continue;
       }
-      const filePath = path.join(sessionDir, entry.name);
-      const stat = await this.safeStat(filePath);
+
+      // 普通文件：utf8 读取正文，读取失败跳过
       let content = "";
       try {
-        content = await fs.promises.readFile(filePath, "utf8");
+        content = await fs.promises.readFile(fullPath, "utf8");
       } catch {
         // 读取失败跳过该文件，不中断整体扫描
         continue;
       }
       result.push({
-        id: `${sessionId}::${entry.name}`,
-        sessionId: sessionId,
+        id: `${sessionId}::${relativePath}`,
+        sessionId,
         content,
         category: "unknown",
-        timestamp: stat ? toIso(stat.mtime) : new Date(0).toISOString(),
+        timestamp: isoTime,
         // 存储完整绝对路径，便于 bridge openFile 调用 vscode.workspace.openTextDocument(Uri.file(path))
-        sourceFile: filePath,
+        sourceFile: fullPath,
+        relativePath,
+        isDirectory: false,
       });
     }
-
-    return result;
   }
 
   // ---------------------------------------------------------------------------
@@ -340,13 +382,20 @@ export class MemoryParser {
   }
 
   /**
-   * 统计目录下 .md 文件数量。
+   * 递归统计目录下所有普通文件的数量（不再按扩展名过滤）。
+   * 用于 Session.entryCount / Repo session.entryCount 字段。
    */
-  private async countMarkdownFiles(dir: string): Promise<number> {
+  private async countFiles(dir: string): Promise<number> {
     const entries = await this.safeReadDir(dir);
-    return entries.filter(
-      (e) => e.type === "file" && e.name.toLowerCase().endsWith(".md"),
-    ).length;
+    let count = 0;
+    for (const entry of entries) {
+      if (entry.type === "file") {
+        count++;
+      } else if (entry.type === "directory") {
+        count += await this.countFiles(path.join(dir, entry.name));
+      }
+    }
+    return count;
   }
 
   /**

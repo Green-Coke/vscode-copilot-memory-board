@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo } from "react";
 import type { MemoryEntry, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
-import { Search, X, MessageSquare, Terminal, Eye, EyeOff } from "lucide-react";
+import { Search, X, MessageSquare, Eye, EyeOff } from "lucide-react";
 import { FileTree } from "@/components/FileTree";
 import { FilePreview } from "@/components/FilePreview";
 import { SortControl } from "@/components/SortControl";
@@ -80,8 +80,6 @@ export function MemoryViewer({
   entries,
   loading,
   sessionTitle,
-  workspaceName,
-  viewMode = "session",
   previewEnabled,
   onPreviewEnabledChange,
   previewVisible,
@@ -212,26 +210,9 @@ export function MemoryViewer({
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* 头部标题与搜索区域
-          折叠按钮已转交各 Panel 标题栏 leadingAction 渲染，
-          此处不再需要为左上角浮层预留 pl-10 内边距，统一使用 pl-4 */}
-      <div className="pl-4 pr-3 py-3 border-b border-border-default bg-surface-1/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
-        <div className="min-w-0 flex items-center gap-3">
-          <div className="flex items-center justify-center w-8.5 h-8.5 rounded-lg border border-brand-indigo/35 bg-brand-indigo/10 text-brand-indigo shadow-[0_0_12px_rgba(122,162,247,0.15)] shrink-0">
-            <Terminal className="w-4.5 h-4.5 text-brand-indigo" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-xs font-bold text-text-primary truncate tracking-wide font-display">
-              {sessionTitle}
-            </h3>
-            <p className="text-[10px] font-mono text-text-secondary mt-0.5">
-              {viewMode === "workspace"
-                ? `工作区浏览器${workspaceName ? ` · ${workspaceName}` : ""}`
-                : "Explorer Mode (Standalone Mock FS)"}
-            </p>
-          </div>
-        </div>
-
+      {/* 头部搜索区域
+          折叠按钮已转交各 Panel 标题栏 leadingAction 渲染 */}
+      <div className="pl-4 pr-3 py-3 border-b border-border-default bg-surface-1/10 flex justify-end gap-3 select-none">
         <div className="flex items-center gap-3">
           {/* 过滤搜索框：放大镜固定在最右侧，搜索词存在时清空按钮自动向左避让，避免重叠 */}
           <div className="relative flex items-center w-full sm:w-[200px]">

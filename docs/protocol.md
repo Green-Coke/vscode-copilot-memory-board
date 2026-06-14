@@ -124,6 +124,10 @@ interface ResponseMessage {
 
 读取某个 Session 下的完整记忆条目（Memory Entries）。
 
+自 v0.0.2 起，该方法会**递归扫描** session 目录，因此返回值既包含文件条目，
+也包含目录条目（`isDirectory: true`）。上层 GUI 根据每个 entry 的 `relativePath`
+重建为多层目录树。`relativePath` 使用 POSIX 风格分隔符（`/`），便于跨平台使用。
+
 **Request:**
 ```json
 {
@@ -143,12 +147,24 @@ interface ResponseMessage {
   "payload": {
     "entries": [
       {
-        "id": "entry-001",
+        "id": "session-xyz789::notes",
+        "sessionId": "session-xyz789",
+        "content": "",
+        "category": "unknown",
+        "timestamp": "2025-12-01T08:05:00Z",
+        "sourceFile": "/abs/path/to/memories/<b64>/notes",
+        "relativePath": "notes",
+        "isDirectory": true
+      },
+      {
+        "id": "session-xyz789::notes/memory-001.md",
         "sessionId": "session-xyz789",
         "content": "User prefers functional React components with hooks...",
         "category": "preference",
         "timestamp": "2025-12-01T08:05:00Z",
-        "sourceFile": "memory-001.md"
+        "sourceFile": "/abs/path/to/memories/<b64>/notes/memory-001.md",
+        "relativePath": "notes/memory-001.md",
+        "isDirectory": false
       }
     ]
   },

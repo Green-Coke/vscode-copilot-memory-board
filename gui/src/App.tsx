@@ -247,7 +247,9 @@ export function App() {
       }
       entryPanel={
         <Panel
-          title="Memory Entries"
+          // 进入工作区级目录视图时，面板标题统一显示 "Workspace Memories"，
+          // 避免展示工作区名 / 工作区级目录 这种路径式冗长字符串
+          title={viewingWorkspaceFiles ? "Workspace Memories" : "Memory Entries"}
           icon={<FileText className="w-3.5 h-3.5 text-text-secondary" />}
           hideHeaderInNarrow={true}
         >

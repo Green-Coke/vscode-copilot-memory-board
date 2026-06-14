@@ -39,7 +39,7 @@ interface NarrowHeaderProps {
  * 窄屏单栏模式下专用的顶部导航返回条。
  * 解决了面包屑路径过长、容易发生换行或重叠的问题。
  * - Sessions 视图下显示：[<-] 工作区名
- * - Entries 视图下显示：[<-] 会话标题
+ * - Entries 视图下显示：[<-] 会话标题（或工作区级目录时统一显示 Workspace Memories）
  */
 function NarrowHeader({
   currentView,
@@ -52,8 +52,9 @@ function NarrowHeader({
   if (currentView === "workspaces") return null;
 
   const handleBack = currentView === "entries" ? onBackToSessions : onBackToWorkspaces;
+  // 工作区级目录视图统一显示 "Workspace Memories"，不再拼接工作区名
   const title = currentView === "entries"
-    ? (viewingWorkspaceFiles ? `${selectedWorkspace?.name} / 工作区级目录` : selectedSession?.title)
+    ? (viewingWorkspaceFiles ? "Workspace Memories" : selectedSession?.title)
     : selectedWorkspace?.name;
 
   return (
