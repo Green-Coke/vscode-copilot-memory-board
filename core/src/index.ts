@@ -47,6 +47,8 @@ export type {
   AnyRequest,
   AnyResponse,
   AnyPushMessage,
+  OpenFileRequest,
+  OpenFileResponse,
 } from "./protocol.js";
 
 // Protocol Utilities

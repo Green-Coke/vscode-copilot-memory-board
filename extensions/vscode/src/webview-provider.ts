@@ -19,6 +19,7 @@ import {
 } from "@memory-board/core";
 import type {
   AnyRequest,
+  OpenFileRequest,
   ResponseMessage,
   UiPreferences,
   WorkspaceState,
@@ -230,6 +231,19 @@ export class MemoryBoardWebviewCore {
             type: message.type,
             requestId: message.requestId,
             payload: { state: next },
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.OPEN_FILE: {
+          const { name, content, path: filePath } = message.payload as OpenFileRequest["payload"];
+          // 在 VS Code 编辑器中打开对应的文件内容
+          await this.openDocumentInVsCode(name, content, filePath);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {},
             error: null,
           };
           break;
@@ -465,6 +479,70 @@ export class MemoryBoardWebviewCore {
   <p><code>pnpm --filter @memory-board/gui build</code></p>
 </body>
 </html>`;
+  }
+
+  /**
+   * 在 VS Code 编辑器中打开并显示文件内容。
+   * 如果提供了真实的物理文件路径且文件存在，则直接打开；
+   * 否则创建一个包含初始内容的 Untitled 虚拟文本编辑器并在 VS Code 中展示。
+   *
+   * @param name 文件名（用于推断语法高亮的语言）
+   * @param content 文件文本内容
+   * @param filePath 物理文件绝对路径（如果有的话）
+   */
+  private async openDocumentInVsCode(
+    name: string,
+    content: string,
+    filePath?: string
+  ): Promise<void> {
+    // 如果物理路径存在且对应文件在磁盘上确实存在，则直接打开物理文件
+    if (filePath && fs.existsSync(filePath)) {
+      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      await vscode.window.showTextDocument(doc, { preview: true });
+      return;
+    }
+
+    // 根据文件后缀推断 VS Code 的语言模式 (Language ID)
+    const ext = path.extname(name).toLowerCase();
+    let language: string | undefined;
+    switch (ext) {
+      case ".ts":
+        language = "typescript";
+        break;
+      case ".tsx":
+        language = "typescriptreact";
+        break;
+      case ".js":
+        language = "javascript";
+        break;
+      case ".jsx":
+        language = "javascriptreact";
+        break;
+      case ".json":
+        language = "json";
+        break;
+      case ".md":
+        language = "markdown";
+        break;
+      case ".css":
+        language = "css";
+        break;
+      case ".html":
+        language = "html";
+        break;
+      case ".txt":
+        language = "plaintext";
+        break;
+      default:
+        language = undefined;
+    }
+
+    // 创建 Untitled 类型的虚拟文本编辑器并打开
+    const doc = await vscode.workspace.openTextDocument({
+      content: content,
+      language: language,
+    });
+    await vscode.window.showTextDocument(doc, { preview: true });
   }
 }
 

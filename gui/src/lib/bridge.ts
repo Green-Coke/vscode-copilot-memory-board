@@ -285,6 +285,15 @@ async function handleMockRequest(
         error: null,
       };
     }
+    case "openFile": {
+      // 独立浏览器模式下不执行实际的文件打开操作，直接返回成功响应
+      return {
+        type: "openFile",
+        requestId: request.requestId,
+        payload: {},
+        error: null,
+      };
+    }
     default: {
       const unknownRequest = request as AnyRequest;
       return {

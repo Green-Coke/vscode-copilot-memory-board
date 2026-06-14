@@ -110,6 +110,24 @@ export interface SetWorkspaceStateRequest {
 }
 
 /**
+ * 在 VS Code 编辑器中打开文件的请求
+ */
+export interface OpenFileRequest {
+  type: "openFile";
+  requestId: string;
+  payload: {
+    /** 文件名 */
+    name: string;
+    /** 文件内容（在 Untitled 模式下初始化使用） */
+    content: string;
+    /** 文件类型描述 */
+    fileType: string;
+    /** 真实的文件物理路径（如果存在的话） */
+    path?: string;
+  };
+}
+
+/**
  * Union of all possible request message types.
  */
 export type AnyRequest =
@@ -119,7 +137,8 @@ export type AnyRequest =
   | GetUiPreferencesRequest
   | SetUiPreferencesRequest
   | GetWorkspaceStateRequest
-  | SetWorkspaceStateRequest;
+  | SetWorkspaceStateRequest
+  | OpenFileRequest;
 
 // ---------------------------------------------------------------------------
 // Response Payloads (Host → GUI)
@@ -201,6 +220,16 @@ export interface SetWorkspaceStateResponse {
 }
 
 /**
+ * 在 VS Code 编辑器中打开文件的响应
+ */
+export interface OpenFileResponse {
+  type: "openFile";
+  requestId: string;
+  payload: Record<string, never>;
+  error: string | null;
+}
+
+/**
  * Union of all possible response message types.
  */
 export type AnyResponse =
@@ -210,7 +239,8 @@ export type AnyResponse =
   | GetUiPreferencesResponse
   | SetUiPreferencesResponse
   | GetWorkspaceStateResponse
-  | SetWorkspaceStateResponse;
+  | SetWorkspaceStateResponse
+  | OpenFileResponse;
 
 // ---------------------------------------------------------------------------
 // Push Messages (Host → GUI, unsolicited)
@@ -246,6 +276,7 @@ export const MessageTypes = {
   GET_WORKSPACE_STATE: "getWorkspaceState",
   SET_WORKSPACE_STATE: "setWorkspaceState",
   ON_REPOS_CHANGED: "onReposChanged",
+  OPEN_FILE: "openFile",
 } as const;
 
 /**

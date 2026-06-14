@@ -11,6 +11,7 @@ import { FilePreview } from "@/components/FilePreview";
 import { SortControl } from "@/components/SortControl";
 import { getMockFileTree, getMockRepoFileTree, type MockFsNode } from "@/lib/mock-filetree";
 import { sortFileTree } from "@/lib/sort-utils";
+import { getBridgeEnvironment, sendRequest } from "@/lib/bridge";
 
 /**
  * MemoryViewer 组件 Props 接口定义
@@ -125,12 +126,14 @@ export function MemoryViewer({
       return null;
     };
 
+    const isVsCode = getBridgeEnvironment() === "vscode";
+
     if (viewMode === "repo" && repoId) {
       const tree = getMockRepoFileTree(repoId);
       setFileTree(tree);
       setSearchQuery("");
-      // 处理目录节点或预览被关掉时，不需要默认选中文件
-      const defaultFile = previewEnabled && previewVisible
+      // 处理目录节点或预览被关掉时，不需要默认选中文件。VS Code 模式下不在此加载默认文件。
+      const defaultFile = !isVsCode && previewEnabled && previewVisible
         ? (findByName(tree, "README.md") ?? findFirstTextFile(tree))
         : null;
       setSelectedNode(defaultFile);
@@ -138,7 +141,7 @@ export function MemoryViewer({
       const tree = getMockFileTree(sessionId);
       setFileTree(tree);
       setSearchQuery("");
-      const defaultFile = previewEnabled && previewVisible
+      const defaultFile = !isVsCode && previewEnabled && previewVisible
         ? findFirstTextFile(tree)
         : null;
       setSelectedNode(defaultFile);
@@ -161,6 +164,20 @@ export function MemoryViewer({
    */
   const handleSelectNode = (node: MockFsNode) => {
     setSelectedNode(node);
+
+    const isVsCode = getBridgeEnvironment() === "vscode";
+    if (node.type === "file" && isVsCode) {
+      // 触发 VS Code 宿主端打开该文件，不走本地的 File Preview
+      sendRequest("openFile", {
+        name: node.name,
+        content: node.content || "",
+        fileType: node.fileType || "text"
+      }).catch((err) => {
+        console.error("Failed to open file in VS Code:", err);
+      });
+      return;
+    }
+
     // 选中文件时如果预览被用户手动收起，则展开预览面板，保证点击文件后能直接看见
     if (node.type === "file" && previewEnabled && !previewVisible) {
       onPreviewVisibleChange(true);
@@ -217,8 +234,9 @@ export function MemoryViewer({
     );
   }
 
-  // 实际是否渲染右侧预览面板：需要总开关启用 + 当前面板展开
-  const showPreviewPanel = previewEnabled && previewVisible;
+  // 实际是否渲染右侧预览面板：需要总开关启用 + 当前面板展开，且不能是在 VS Code 环境中
+  const isVsCode = getBridgeEnvironment() === "vscode";
+  const showPreviewPanel = !isVsCode && previewEnabled && previewVisible;
 
   return (
     <div className="flex flex-col h-full relative">
@@ -263,22 +281,24 @@ export function MemoryViewer({
             <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
           </div>
 
-          {/* 预览总开关：切换 enableFilePreview 全局偏好 */}
-          <button
-            data-testid="preview-toggle"
-            type="button"
-            onClick={() => onPreviewEnabledChange(!previewEnabled)}
-            title={previewEnabled ? "关闭文件预览功能" : "开启文件预览功能"}
-            aria-pressed={previewEnabled}
-            className={cn(
-              "flex items-center justify-center w-7 h-7 rounded border cursor-pointer transition-colors shrink-0",
-              previewEnabled
-                ? "bg-brand-indigo/15 border-brand-indigo/40 text-brand-indigo"
-                : "bg-surface-2 border-border-default text-text-muted hover:text-text-primary"
-            )}
-          >
-            {previewEnabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-          </button>
+          {/* 预览总开关：切换 enableFilePreview 全局偏好，VS Code 模式下由于不展示预览，此开关也不予以展示 */}
+          {!isVsCode && (
+            <button
+              data-testid="preview-toggle"
+              type="button"
+              onClick={() => onPreviewEnabledChange(!previewEnabled)}
+              title={previewEnabled ? "关闭文件预览功能" : "开启文件预览功能"}
+              aria-pressed={previewEnabled}
+              className={cn(
+                "flex items-center justify-center w-7 h-7 rounded border cursor-pointer transition-colors shrink-0",
+                previewEnabled
+                  ? "bg-brand-indigo/15 border-brand-indigo/40 text-brand-indigo"
+                  : "bg-surface-2 border-border-default text-text-muted hover:text-text-primary"
+              )}
+            >
+              {previewEnabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            </button>
+          )}
         </div>
       </div>
 
