@@ -11,11 +11,7 @@
     <script type="module" crossorigin src="./assets/index.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index.css">
   </head>
-  <!-- theme-macaron 在 HTML 解析阶段即生效，零 FOUC（无样式闪烁）。
-       React createRoot 之前所有 CSS 已就绪。
-       VS Code webview 入口（extensions/vscode/resources/webview/index.html）保持 <body> 空，
-       VS Code 运行时会自动注入 vscode-dark/vscode-light/vscode-high-contrast 类。 -->
-  <body class="theme-macaron">
+  <body>
     <div id="root"></div>
   </body>
 </html>

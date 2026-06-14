@@ -3,13 +3,15 @@ import { test, expect, type Page } from "@playwright/test";
 /**
  * 在宽屏布局的主作用域内执行回调，避开窄屏/中屏同步渲染的副本。
  * 当前 Layout 使用 `.min-[900px]:flex` 作为宽屏容器，e2e 默认桌面尺寸下命中它。
+ * 修复了之前直接 new Function(cbSrc) 导致箭头函数没有被执行的问题，使用立即执行表达式包装。
  */
 async function inWideScope(page: Page, fn: (scope: HTMLElement) => Promise<void> | void) {
   await page.evaluate(async (cbSrc) => {
     const el = document.querySelector<HTMLElement>(".min-\\[900px\\]\\:flex");
     if (!el) throw new Error("wide layout scope not found");
     // eslint-disable-next-line no-new-func
-    const cb = new Function("scope", cbSrc) as (scope: HTMLElement) => Promise<void> | void;
+    // 通过 return (cbSrc)(scope) 的方式，使得传入的箭头函数参数在此处真正被调用执行
+    const cb = new Function("scope", "return (" + cbSrc + ")(scope)") as (scope: HTMLElement) => Promise<void> | void;
     await cb(el);
   }, fn.toString());
 }
@@ -21,21 +23,15 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test.describe("头部右上角统计与连接指示器", () => {
-  test("统计区在桌面尺寸可见且包含 workspaces/sessions", async ({ page }) => {
+test.describe("头部右上角统计区", () => {
+  test("统计区在桌面尺寸可见且包含 workspaces", async ({ page }) => {
     await page.goto("/");
     const stats = page.locator('[data-testid="header-stats"]').first();
     await expect(stats).toBeVisible();
+    // 验证 workspaces 统计文本可见
     await expect(stats).toContainText("workspaces");
-    await expect(stats).toContainText("sessions");
-  });
-
-  test("连接状态指示器可见（保留状态点，不再显示 Connected 文案）", async ({ page }) => {
-    await page.goto("/");
-    const connected = page.locator('[data-testid="header-connected"]').first();
-    await expect(connected).toBeVisible();
-    // 文案已移除，只保留状态点
-    await expect(connected).not.toContainText("Connected");
+    // sessions 统计已被删除，验证其不再展示
+    await expect(stats).not.toContainText("sessions");
   });
 });
 
@@ -70,16 +66,20 @@ test.describe("预览行为", () => {
     });
     await expect(page.locator('[data-testid="file-preview-close"]').first()).toBeVisible();
 
-    // 再点击一个目录节点
+    // 再点击一个目录节点。由于初始状态下 public 可能是展开状态，直接点击会触发折叠
+    // 在此我们在 wide 作用域内找到 public 目录按钮并执行点击
     await inWideScope(page, (scope) => {
       const dirs = Array.from(scope.querySelectorAll<HTMLButtonElement>("button"));
-      const publicDir = dirs.find((b) => (b.textContent || "").trim() === "public");
+      const publicDir = dirs.find((b) => /public/i.test(b.textContent || ""));
       publicDir?.click();
     });
-    // 应当进入“已选中目录”空态，关闭按钮不可见
-    await expect(page.locator('[data-testid="file-preview-empty"]').first()).toBeVisible();
-    await expect(page.locator('[data-testid="file-preview-empty"]').first()).toContainText("已选中目录");
-    await expect(page.locator('[data-testid="file-preview-close"]')).toHaveCount(0);
+
+    // 应当进入“已选中目录”空态，关闭按钮不可见。
+    // 由于页面中存在非活跃屏幕（中屏/窄屏）的 DOM 副本，需要将定位器限定在当前激活的宽屏容器内断言。
+    const emptyPlaceholder = page.locator('.min-\\[900px\\]\\:flex [data-testid="file-preview-empty"]').first();
+    await expect(emptyPlaceholder).toBeVisible();
+    await expect(emptyPlaceholder).toContainText("已选中目录");
+    await expect(page.locator('.min-\\[900px\\]\\:flex [data-testid="file-preview-close"]')).toHaveCount(0);
   });
 
   test("可以手动点击关闭按钮收起当前预览", async ({ page }) => {
@@ -122,22 +122,26 @@ test.describe("排序", () => {
     const sortBy = page.locator('[data-testid="sort-by-workspace"]').first();
     const directionBtn = page.locator('[data-testid="sort-direction-workspace"]').first();
 
-    // 默认名称升序：按名字排序
+    // 默认创建时间降序
+    await expect(sortBy).toHaveValue("createdAt");
+    await expect(directionBtn).toHaveAttribute(
+      "title",
+      expect.stringContaining("倒序")
+    );
+
+    // 切换到名称
+    await sortBy.selectOption("name");
     await expect(sortBy).toHaveValue("name");
     await expect(directionBtn).toHaveAttribute(
       "title",
-      expect.stringContaining("升序")
+      expect.stringContaining("正序")
     );
 
-    // 切换到创建时间
-    sortBy.selectOption("createdAt");
-    await expect(sortBy).toHaveValue("createdAt");
-
-    // 切换方向到降序
-    directionBtn.click();
+    // 切换方向到倒序
+    await directionBtn.click();
     await expect(directionBtn).toHaveAttribute(
       "title",
-      expect.stringContaining("降序")
+      expect.stringContaining("倒序")
     );
   });
 

@@ -14,6 +14,7 @@ import {
   ChevronLeft, FolderGit2, MessageSquare, Terminal,
   ChevronDown, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
+import { CustomSelect } from "@/components/CustomSelect";
 
 /**
  * 当前运行环境是否为 VS Code 插件模式。
@@ -185,12 +186,14 @@ export function AppHeader({
   const [scanTarget, setScanTarget] = useState<ScanTarget>(() => readScanTarget());
 
   /**
-   * 切换 Stable / Insiders：写入 localStorage 后强制 reload。
+   * 切换 Stable / Insiders 扫描目标：写入 localStorage 并重载。
    * 触发 reload 是为了让所有 hooks（useWorkspaces / useSessions / useMemoryContent）重新走 fetch，
    * 让用户立刻看到切换效果，而不是手动点击刷新。
+   * 
+   * @param next 新的扫描目标
    */
-  const handleToggleScanTarget = () => {
-    const next: ScanTarget = scanTarget === "stable" ? "insiders" : "stable";
+  const handleToggleScanTarget = (next: ScanTarget) => {
+    if (next === scanTarget) return;
     writeScanTarget(next);
     setScanTarget(next);
     // 给用户一个机会看到提示，再 reload
@@ -294,19 +297,18 @@ export function AppHeader({
           </div>
         )}
 
-        {/* Standalone 扫描目标切换：Stable ↔ ↻ Insiders；仅 standalone 模式渲染 */}
-        <button
+        {/* Standalone 扫描目标切换选择器：使用共享的 CustomSelect 组件 */}
+        <CustomSelect
           data-testid="scan-target-toggle"
-          type="button"
-          onClick={handleToggleScanTarget}
-          title={scanTarget === "stable"
-            ? "当前扫描 VS Code 正式版 (Code)；点击切换到 Insiders"
-            : "当前扫描 VS Code Insiders；点击切换到正式版 (Code)"}
-          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-2 border border-border-default hover:border-brand-indigo transition-colors cursor-pointer text-text-primary font-mono text-[11px]"
-        >
-          <Terminal className="w-3.5 h-3.5 text-brand-indigo" />
-          <span>{scanTarget === "stable" ? "Stable" : "Insiders"}</span>
-        </button>
+          value={scanTarget}
+          onValueChange={(val) => handleToggleScanTarget(val as ScanTarget)}
+          options={[
+            { value: "stable", label: "Stable (稳定版)" },
+            { value: "insiders", label: "Insiders (体验版)" },
+          ]}
+          title="切换扫描 VS Code 正式版 (Stable) 或体验版 (Insiders) 制造的 Copilot memories 缓存"
+          className="hidden sm:flex"
+        />
       </div>
     </header>
   );

@@ -213,9 +213,10 @@ export function MemoryViewer({
       {/* 头部搜索区域
           折叠按钮已转交各 Panel 标题栏 leadingAction 渲染 */}
       <div className="pl-4 pr-3 py-3 border-b border-border-default bg-surface-1/10 flex justify-end gap-3 select-none">
-        <div className="flex items-center gap-3">
-          {/* 过滤搜索框：放大镜固定在最右侧，搜索词存在时清空按钮自动向左避让，避免重叠 */}
-          <div className="relative flex items-center w-full sm:w-[200px]">
+        {/* 增加 w-full justify-end，确保容器在单栏或窄屏时能充满整行宽度，防止 flex 项缩窄 */}
+        <div className="flex items-center gap-3 w-full justify-end">
+          {/* 过滤搜索框：在单栏/窄屏模式（<500px）下设为 w-full 撑满；宽屏模式下（>=500px）恢复为固定宽度 w-[200px] */}
+          <div className="relative flex items-center w-full min-[500px]:w-[200px]">
             <input
               type="text"
               value={searchQuery}
@@ -227,6 +228,7 @@ export function MemoryViewer({
               <button
                 onClick={() => setSearchQuery("")}
                 className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
+                title="清空搜索词"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

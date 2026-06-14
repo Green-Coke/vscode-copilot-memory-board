@@ -11,6 +11,7 @@ import { SortControl } from "@/components/SortControl";
 import { sortItems } from "@/lib/sort-utils";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { useCopyPath, useRevealInOs } from "@/hooks/use-bridge";
+import { CustomSelect } from "@/components/CustomSelect";
 
 interface WorkspaceListProps {
   /** 工作区列表 */
@@ -116,16 +117,16 @@ export function WorkspaceList({
             {/* 提示当前为工作区（Workspaces）管理区域，去掉 "VS Code:" 提示以避免界面过于拥挤 */}
             <span>Workspaces</span>
             <span className="opacity-40">•</span>
-            <select
+            <CustomSelect
               value={preferences.ideRedirectTarget ?? "stable"}
-              onChange={(e) => onPreferencesChange({ ideRedirectTarget: e.target.value as any })}
-              className="bg-surface-2 border border-border-default rounded px-2 py-0.5 text-[10px] font-mono text-text-primary outline-none focus:border-brand-indigo/60 transition-colors cursor-pointer"
+              onValueChange={(val) => onPreferencesChange({ ideRedirectTarget: val as any })}
+              options={[
+                { value: "stable", label: "Stable (稳定版)" },
+                { value: "insiders", label: "Insiders (体验版)" },
+                { value: "none", label: "Disabled (禁用)" },
+              ]}
               title="处于第三方 IDE 环境时，可在此快速切换读取 VS Code 稳定版或体验版制造的 Copilot memories 缓存"
-            >
-              <option value="stable">Stable (稳定版)</option>
-              <option value="insiders">Insiders (体验版)</option>
-              <option value="none">Disabled (禁用)</option>
-            </select>
+            />
           </div>
         ) : (
           /* VS Code 模式下，左上角显示 Workspaces 文字提示，表明此为工作区列表，避免界面过空 */

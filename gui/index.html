@@ -9,11 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <title>Memory Board</title>
   </head>
-  <!-- theme-macaron 在 HTML 解析阶段即生效，零 FOUC（无样式闪烁）。
-       React createRoot 之前所有 CSS 已就绪。
-       VS Code webview 入口（extensions/vscode/resources/webview/index.html）保持 <body> 空，
-       VS Code 运行时会自动注入 vscode-dark/vscode-light/vscode-high-contrast 类。 -->
-  <body class="theme-macaron">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
