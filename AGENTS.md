@@ -14,6 +14,6 @@
 
 ## 添加或者添加任何语言的代码方法时，确保加上注释说明这个方法的作用
 
-## 当开发VsCode extension前优先仔细读取 `docs\notes`目录中的指南，如果指南中有缺失或不清楚的地方，再仔细浏览https://code.visualstudio.com/api的官方文档， 多搜索多查询。
+## 当开发VsCode extension前优先仔细读取 `docs\notes`目录中的指南，如果指南中没有相应地内容时，必须浏览查询 `https://code.visualstudio.com/api` 官方文档， 多搜索多查询。
 
 任务完成以后自动总结API的功能使用指南文档至 `docs\notes` 目录下方便后续开发参考。
