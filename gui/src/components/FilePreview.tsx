@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { FileText, FileImage, ShieldAlert, FileCode2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileTreeNode } from "@/lib/file-tree-types";
@@ -19,6 +20,7 @@ interface FilePreviewProps {
  * 文件预览展示组件，根据选中的文件节点类型展示文本、图片或占位提示
  */
 export function FilePreview({ node, disabled, onClose }: FilePreviewProps) {
+  const { t } = useTranslation();
   // 预览总开关关闭时的占位状态
   if (disabled) {
     return (
@@ -36,10 +38,10 @@ export function FilePreview({ node, disabled, onClose }: FilePreviewProps) {
           <FileCode2 className="absolute w-4 h-4 text-text-muted/60" />
         </div>
         <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider font-display">
-          预览已关闭
+          {t("preview.disabled.title")}
         </h3>
         <p className="text-[11px] text-text-muted mt-1 max-w-[220px] leading-relaxed">
-          文件预览功能当前处于关闭状态。可通过面板顶部的开关重新启用。
+          {t("preview.disabled.message")}
         </p>
       </div>
     );
@@ -63,12 +65,12 @@ export function FilePreview({ node, disabled, onClose }: FilePreviewProps) {
           <FileCode2 className="absolute w-4 h-4 text-brand-indigo animate-pulse" />
         </div>
         <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider font-display">
-          {isDirectoryNode ? "已选中目录" : "未选中文件"}
+          {isDirectoryNode ? t("preview.empty.directoryTitle") : t("preview.empty.fileTitle")}
         </h3>
         <p className="text-[11px] text-text-muted mt-1 max-w-[220px] leading-relaxed">
           {isDirectoryNode
-            ? "目录暂无可预览的内容，请选择一个具体的文件查看其内容。"
-            : "从左侧目录树中选择一个文本或图片文件，即可在此处查看其具体内容。"}
+            ? t("preview.empty.directoryHint")
+            : t("preview.empty.fileHint")}
         </p>
       </div>
     );
@@ -92,7 +94,7 @@ export function FilePreview({ node, disabled, onClose }: FilePreviewProps) {
               <button
                 data-testid="file-preview-close"
                 onClick={onClose}
-                title="关闭预览"
+                title={t("common.closePreview")}
                 className="text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
               >
                 <X className="w-3.5 h-3.5" />
@@ -129,7 +131,7 @@ export function FilePreview({ node, disabled, onClose }: FilePreviewProps) {
               <button
                 data-testid="file-preview-close"
                 onClick={onClose}
-                title="关闭预览"
+                title={t("common.closePreview")}
                 className="text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
               >
                 <X className="w-3.5 h-3.5" />
@@ -162,10 +164,12 @@ export function FilePreview({ node, disabled, onClose }: FilePreviewProps) {
         <ShieldAlert className="w-5 h-5" />
       </div>
       <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider font-display">
-        不支持预览的格式
+        {t("preview.unsupported.title")}
       </h3>
       <p className="text-[11px] text-text-secondary mt-1.5 max-w-[220px] leading-relaxed">
-        文件 <span className="font-mono text-brand-indigo font-semibold">{node.name}</span> 是二进制或系统不识别的专有格式，暂无法在此以文本方式呈观。
+        {/* i18next 原生插值：name 作为 {{name}} 传入
+            原文为「星观」笔误（应为「呈现」），zh-cn 资源中已顺手修正 */}
+        {t("preview.unsupported.hint", { name: node.name })}
       </p>
     </div>
   );

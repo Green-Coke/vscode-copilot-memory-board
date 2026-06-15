@@ -18,6 +18,7 @@ import {
   useWorkspaceState,
 } from "@/hooks/use-bridge";
 import { AdaptiveLayout, Panel, WorkspaceCollapseButton, type ViewMode } from "@/components/Layout";
+import { useTranslation } from "react-i18next";
 import { WorkspaceList } from "@/components/WorkspaceList";
 import { SessionList } from "@/components/SessionList";
 import { MemoryViewer } from "@/components/MemoryViewer";
@@ -27,6 +28,7 @@ import { SortControl } from "@/components/SortControl";
 import { FolderGit2, MessageSquare, FileText } from "lucide-react";
 
 export function App() {
+  const { t } = useTranslation();
   // Initialize bridge on mount
   useEffect(() => {
     const env = initBridge();
@@ -235,9 +237,11 @@ export function App() {
       }
       repoPanel={
         <Panel
-          title="工作区"
+          title={t("workspaces.title")}
           icon={<FolderGit2 className="w-3.5 h-3.5 text-text-secondary" />}
           leadingAction={workspaceCollapseLeading}
+          // 重要：与之前 `title === "工作区"` 判断等价，但解除翻译字符串等值依赖
+          hideTitle
         >
           <WorkspaceList
             workspaces={workspaces ?? []}

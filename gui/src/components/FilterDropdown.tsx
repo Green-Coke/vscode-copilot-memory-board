@@ -6,6 +6,7 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Filter } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface FilterDropdownProps {
@@ -29,6 +30,7 @@ export function FilterDropdown({
   onToggle,
   testIdScope = "default",
 }: FilterDropdownProps) {
+  const { t } = useTranslation();
   return (
     <DropdownMenu.Root>
       {/* 触发按钮：采用 cyber 风格，启用过滤时高亮且带微弱点状指示 */}
@@ -36,7 +38,7 @@ export function FilterDropdown({
         <button
           data-testid={`filter-trigger-${testIdScope}`}
           type="button"
-          aria-label="筛选过滤"
+          aria-label={t("filter.aria")}
           className={cn(
             "p-1.5 rounded cursor-pointer flex items-center justify-center transition-all duration-200 shrink-0 border relative",
             checked
@@ -101,7 +103,7 @@ export function FilterDropdown({
           >
             {/* 占位符以对齐文字 */}
             <span className="w-3.5 h-3.5 shrink-0" />
-            <span className="flex-1">重置过滤</span>
+            <span className="flex-1">{t("common.resetFilter")}</span>
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>

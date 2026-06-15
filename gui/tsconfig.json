@@ -5,7 +5,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": ".",
+    // TS 5+ 已不需要 baseUrl，paths 单独工作（baseUrl 自 TS 5.0 起弃用，TS 7.0 移除）。
     "paths": {
       "@/*": ["./src/*"]
     },

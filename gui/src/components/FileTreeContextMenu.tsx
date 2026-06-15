@@ -10,6 +10,7 @@
 // ============================================================================
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import {
   Copy, Scissors, ClipboardPaste, Pencil, Trash2,
@@ -100,6 +101,7 @@ export function FileTreeContextMenu({
   onAction,
   hasPasteContent,
 }: FileTreeContextMenuProps) {
+  const { t } = useTranslation();
   const isStandalone = getBridgeEnvironment() === "standalone";
   const isDir = node?.type === "dir";
   const isFile = node?.type === "file";
@@ -130,14 +132,14 @@ export function FileTreeContextMenu({
             <>
               <MenuItem
                 icon={Copy}
-                label="复制"
+                label={t("common.copy")}
                 shortcut="Ctrl+C"
                 disabled={isStandalone}
                 onSelect={() => onAction("copy", node)}
               />
               <MenuItem
                 icon={Scissors}
-                label="剪切"
+                label={t("common.cut")}
                 shortcut="Ctrl+X"
                 disabled={isStandalone}
                 onSelect={() => onAction("cut", node)}
@@ -151,14 +153,14 @@ export function FileTreeContextMenu({
               {!isBlank && <ContextMenu.Separator className="h-px bg-border-subtle/40 my-1 mx-2" />}
               <MenuItem
                 icon={ClipboardPaste}
-                label="粘贴"
+                label={t("common.paste")}
                 shortcut="Ctrl+V"
                 disabled={isStandalone || !hasPasteContent}
                 onSelect={() => onAction("paste", node)}
               />
               <MenuItem
                 icon={FolderPlus}
-                label="新建文件夹"
+                label={t("common.newFolder")}
                 disabled={isStandalone}
                 onSelect={() => onAction("newFolder", node)}
               />
@@ -171,7 +173,7 @@ export function FileTreeContextMenu({
               <ContextMenu.Separator className="h-px bg-border-subtle/40 my-1 mx-2" />
               <MenuItem
                 icon={Link}
-                label="复制路径"
+                label={t("common.copyPath")}
                 onSelect={() => onAction("copyPath", node)}
               />
             </>
@@ -183,14 +185,14 @@ export function FileTreeContextMenu({
               <ContextMenu.Separator className="h-px bg-border-subtle/40 my-1 mx-2" />
               <MenuItem
                 icon={Pencil}
-                label="重命名"
+                label={t("common.rename")}
                 shortcut="F2"
                 disabled={isStandalone}
                 onSelect={() => onAction("rename", node)}
               />
               <MenuItem
                 icon={Trash2}
-                label="删除"
+                label={t("common.delete")}
                 shortcut="Del"
                 disabled={isStandalone}
                 destructive
@@ -198,7 +200,7 @@ export function FileTreeContextMenu({
               />
               <MenuItem
                 icon={FolderOpen}
-                label="在资源管理器中显示"
+                label={t("common.revealInExplorer")}
                 onSelect={() => onAction("revealInOs", node)}
               />
             </>

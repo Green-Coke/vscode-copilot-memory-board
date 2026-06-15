@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { Pin, PinOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface PinnedButtonProps {
@@ -28,6 +29,7 @@ export function PinnedButton({
   testIdScope,
   itemId,
 }: PinnedButtonProps) {
+  const { t } = useTranslation();
   const testId = itemId
     ? `pin-${testIdScope}-${itemId}`
     : `pin-${testIdScope}`;
@@ -40,7 +42,7 @@ export function PinnedButton({
         e.stopPropagation();
         onClick(!pinned);
       }}
-      title={pinned ? "取消钉选" : "钉选到顶部"}
+      title={pinned ? t("pinned.unpin") : t("pinned.pinToTop")}
       aria-pressed={pinned}
       className={cn(
         "p-1 rounded cursor-pointer flex items-center justify-center transition-all duration-200 shrink-0",

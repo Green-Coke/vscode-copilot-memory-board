@@ -9,6 +9,7 @@
 // ============================================================================
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 interface ErrorBoundaryProps {
   /** 子元素；任意子树抛错都会被捕获 */
@@ -82,6 +83,8 @@ function DefaultErrorFallback({
   error: Error;
   onReset: () => void;
 }): React.ReactElement {
+  // 函数组件，可直接调用 useTranslation
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-surface-2/10">
       <div className="relative w-16 h-16 mb-4 flex items-center justify-center text-status-error/60">
@@ -98,11 +101,10 @@ function DefaultErrorFallback({
         </svg>
       </div>
       <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider font-display">
-        面板渲染失败
+        {t("errorBoundary.title")}
       </h3>
       <p className="text-[11px] text-text-muted mt-1.5 max-w-[280px] leading-relaxed">
-        渲染过程中发生异常。可能是数据格式异常（例如旧版扩展/standalone 服务返回了
-        不兼容的字段），重启 standalone dev server 后通常能解决。
+        {t("errorBoundary.message")}
       </p>
       <pre className="mt-3 max-w-[400px] text-[10px] text-status-error/80 bg-surface-3/30 rounded p-2 overflow-auto text-left font-mono">
         {error.message}
@@ -112,7 +114,7 @@ function DefaultErrorFallback({
         onClick={onReset}
         className="mt-4 px-3 py-1.5 text-[11px] font-semibold rounded border border-border-default bg-surface-3/40 hover:bg-surface-3/70 text-text-primary transition-colors cursor-pointer"
       >
-        重试
+        {t("errorBoundary.retry")}
       </button>
     </div>
   );

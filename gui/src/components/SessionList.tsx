@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import type { Session, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Calendar, ChevronRight, Search, X, FolderTree, Link, FolderOpen } from "lucide-react";
@@ -53,6 +54,7 @@ export function SessionList({
   onlyShowWithEntries,
   onOnlyShowWithEntriesChange,
 }: SessionListProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const copyPath = useCopyPath();
   const revealInOs = useRevealInOs();
@@ -150,10 +152,10 @@ export function SessionList({
           <MessageSquare className="absolute w-5 h-5 text-text-muted/60 animate-bounce" />
         </div>
         <h3 className="text-xs font-bold tracking-wider text-text-secondary uppercase font-display">
-          等待工作区选择
+          {t("sessions.empty.selectWorkspace.title")}
         </h3>
         <p className="text-[11px] text-text-muted mt-1 max-w-[180px] leading-relaxed">
-          请从左侧面板选择一个工作区以扫描其会话记忆。
+          {t("sessions.empty.selectWorkspace.hint")}
         </p>
       </div>
     );
@@ -174,10 +176,11 @@ export function SessionList({
           <MessageSquare className="absolute w-4 h-4 text-accent-cyan" />
         </div>
         <h3 className="text-xs font-bold tracking-wider text-text-primary uppercase font-display">
-          未找到会话
+          {t("sessions.empty.none.title")}
         </h3>
         <p className="text-[11px] text-text-secondary mt-1.5 max-w-[200px] leading-relaxed">
-          在 <span className="text-brand-indigo font-semibold">{workspaceName}</span> 中未发现可用的 Copilot Chat 记忆时间线。
+          {/* i18next 原生插值：workspaceName 作为 {{workspaceName}} 插入 */}
+          {t("sessions.empty.none.hint", { workspaceName })}
         </p>
       </div>
     );
@@ -203,7 +206,7 @@ export function SessionList({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
-              aria-label="搜索会话"
+              aria-label={t("sessions.search.aria")}
             />
             {/* 搜索放大镜固定在右侧；存在搜索词时清空按钮自动向左避让，避免重叠 */}
             {searchQuery ? (
@@ -217,7 +220,7 @@ export function SessionList({
             <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
           </div>
           <FilterDropdown
-            label="只展示有条目的会话"
+            label={t("sessions.filter.onlyWithEntries")}
             checked={onlyShowWithEntries}
             onToggle={onOnlyShowWithEntriesChange}
             testIdScope="session"
@@ -239,7 +242,7 @@ export function SessionList({
                     ? "bg-selected-bg border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
                     : "border-transparent hover:bg-surface-3/50 hover:border-border-default text-text-primary"
                 )}
-                title="查看该工作区的记忆文件目录"
+                title={t("sessions.workspaceDirectory.viewTooltip")}
               >
                 {viewingWorkspaceFiles && (
                   <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded bg-selected-text shadow-[0_0_8px_var(--ui-selected-glow)]" />
@@ -256,10 +259,10 @@ export function SessionList({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold font-display truncate tracking-wide">
-                    工作区级目录
+                    {t("sessions.workspaceDirectory.title")}
                   </p>
                   <p className="text-[9px] font-mono text-text-secondary mt-0.5 truncate">
-                    点击查看该工作区的记忆文件目录
+                    {t("sessions.workspaceDirectory.hint")}
                   </p>
                 </div>
                 <ChevronRight
@@ -305,7 +308,7 @@ export function SessionList({
                   )}
                 >
                   <Link className="w-3.5 h-3.5 shrink-0" />
-                  <span className="flex-1">复制路径</span>
+                  <span className="flex-1">{t("sessions.menu.copyPath")}</span>
                 </ContextMenu.Item>
                 <ContextMenu.Item
                   disabled={!repoSession?.absolutePath}
@@ -328,7 +331,7 @@ export function SessionList({
                   )}
                 >
                   <FolderOpen className="w-3.5 h-3.5 shrink-0" />
-                  <span className="flex-1">在资源管理器中打开</span>
+                  <span className="flex-1">{t("sessions.menu.revealInExplorer")}</span>
                 </ContextMenu.Item>
               </ContextMenu.Content>
             </ContextMenu.Portal>
@@ -380,7 +383,7 @@ export function SessionList({
                   "shadow-[0_0_8px_rgba(99,102,241,0.1)] hover:shadow-[0_0_12px_rgba(99,102,241,0.25)]"
                 )}
               >
-                加载更多（剩余 {unpinned.length - visibleCount} 项）
+                {t("common.loadMore", { count: unpinned.length - visibleCount })}
               </button>
             )}
           </>
@@ -519,7 +522,7 @@ export function SessionList({
               )}
             >
               <Link className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">复制路径</span>
+              <span className="flex-1">{t("sessions.menu.copyPath")}</span>
             </ContextMenu.Item>
             <ContextMenu.Item
               disabled={!session.absolutePath}
@@ -533,7 +536,7 @@ export function SessionList({
               )}
             >
               <FolderOpen className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">在资源管理器中打开</span>
+              <span className="flex-1">{t("sessions.menu.revealInExplorer")}</span>
             </ContextMenu.Item>
           </ContextMenu.Content>
         </ContextMenu.Portal>

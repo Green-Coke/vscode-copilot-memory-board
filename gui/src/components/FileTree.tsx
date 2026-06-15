@@ -3,6 +3,7 @@
 // ============================================================================
 
 import React, { useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Folder, FolderOpen, FileText, FileImage, File,
   ChevronDown, ChevronRight
@@ -354,6 +355,7 @@ function getNodeParentDir(node: FileTreeNode): string | undefined {
  * 集成了右键菜单、@dnd-kit 拖拽、快捷键、重命名内联编辑和外部文件拖入导入。
  */
 export function FileTree({ data, selectedNode, onSelectFile, rootPath }: FileTreeProps) {
+  const { t } = useTranslation();
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [isExternalDragOver, setIsExternalDragOver] = useState(false);
@@ -488,8 +490,9 @@ export function FileTree({ data, selectedNode, onSelectFile, rootPath }: FileTre
               ? resolveNodeAbsolutePath(node) ?? inferRootPath()
               : inferRootPath();
             if (parentDir) {
-              // 创建新文件夹，使用默认名称
-              const newDirPath = `${parentDir}/新建文件夹`;
+              // 创建新文件夹，使用当前定位下的默认名称。
+              // 注意：该名称会持久化为磁盘上的真实目录名，跟随当前 UI 语言（en→"New Folder"、zh-cn→"新建文件夹"）。
+              const newDirPath = `${parentDir}/${t("common.newFolder")}`;
               await createDirectory(newDirPath);
             }
             break;
@@ -500,7 +503,7 @@ export function FileTree({ data, selectedNode, onSelectFile, rootPath }: FileTre
       }
     },
     [clipboard, setClipboard, clearClipboard, copyEntries, moveEntries, deleteEntries,
-     revealInOs, copyPath, readExternalClipboard, createDirectory, inferRootPath, data]
+     revealInOs, copyPath, readExternalClipboard, createDirectory, inferRootPath, data, t]
   );
 
   // ---------------------------------------------------------------------------
@@ -661,7 +664,7 @@ export function FileTree({ data, selectedNode, onSelectFile, rootPath }: FileTre
   if (!data || data.length === 0) {
     return (
       <div className="p-4 text-center text-text-muted font-mono text-[11px]">
-        目录为空
+        {t("common.directoryEmpty")}
       </div>
     );
   }
@@ -713,7 +716,7 @@ export function FileTree({ data, selectedNode, onSelectFile, rootPath }: FileTre
       <DragOverlay>
         {draggingId ? (
           <div className="bg-surface-2/90 border border-brand-indigo/40 rounded px-3 py-1 text-[11px] font-mono text-text-primary shadow-lg backdrop-blur-sm">
-            📦 移动中...
+            {t("common.draggingHint")}
           </div>
         ) : null}
       </DragOverlay>

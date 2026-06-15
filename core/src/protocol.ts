@@ -320,12 +320,24 @@ export interface ReadMemoryContentResponse {
 
 /**
  * 读取 UI 偏好响应
+ *
+ * payload 扩展字段说明：
+ * - preferences: 全局 UI 偏好（预览开关、IDE 重定向目标等）
+ * - showRedirectSelector / isAgy: 派生 IDE 环境下是否展示 IDE 重定向选择器
+ * - language: 扩展端运行时的显示语言（来自 vscode.env.language，如 "zh-cn"/"en"/"en-US"）。
+ *             可选字段：扩展端始终注入；standalone 模式下不存在。
+ *             用于 webview 端 i18n 选择合适的翻译资源。
+ *             注意：VS Code 切换显示语言必然导致窗口重启、webview 重建，
+ *             所以没有运行时语言变化事件——webview 初始化时读取一次即可。
  */
 export interface GetUiPreferencesResponse {
   type: "getUiPreferences";
   requestId: string;
   payload: {
     preferences: UiPreferences;
+    showRedirectSelector?: boolean;
+    isAgy?: boolean;
+    language?: string;
   };
   error: string | null;
 }

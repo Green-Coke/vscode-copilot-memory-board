@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { MemoryEntry, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { Search, X, MessageSquare, Eye, EyeOff } from "lucide-react";
@@ -87,6 +88,7 @@ export function MemoryViewer({
   fileTreeSort,
   onFileTreeSortChange,
 }: MemoryViewerProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   // 当前选中的节点：可能是文件或目录；目录/禁用预览时右侧展示空态
   const [selectedNode, setSelectedNode] = useState<FileTreeNode | null>(null);
@@ -195,10 +197,10 @@ export function MemoryViewer({
           <MessageSquare className="absolute w-6 h-6 text-brand-indigo" />
         </div>
         <h3 className="text-xs font-bold tracking-wider text-text-secondary uppercase font-display">
-          选择会话日志
+          {t("memory.empty.title")}
         </h3>
         <p className="text-[11px] text-text-muted mt-1.5 max-w-[200px] leading-relaxed">
-          从中间栏选择一个会话时序记录，即可在此渲染相应项目文件快照。
+          {t("memory.empty.hint")}
         </p>
       </div>
     );
@@ -222,13 +224,13 @@ export function MemoryViewer({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
-              aria-label="过滤文件"
+              aria-label={t("memory.search.aria")}
             />
             {searchQuery ? (
               <button
                 onClick={() => setSearchQuery("")}
                 className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
-                title="清空搜索词"
+                title={t("memory.search.clear")}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -242,7 +244,7 @@ export function MemoryViewer({
               data-testid="preview-toggle"
               type="button"
               onClick={() => onPreviewEnabledChange(!previewEnabled)}
-              title={previewEnabled ? "关闭文件预览功能" : "开启文件预览功能"}
+              title={previewEnabled ? t("memory.preview.disable") : t("memory.preview.enable")}
               aria-pressed={previewEnabled}
               className={cn(
                 "flex items-center justify-center w-7 h-7 rounded border cursor-pointer transition-colors shrink-0",
@@ -303,10 +305,10 @@ export function MemoryViewer({
               <EyeOff className="w-6 h-6" />
             </div>
             <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider font-display">
-              预览面板已收起
+              {t("preview.collapsed.title")}
             </h3>
             <p className="text-[11px] text-text-muted mt-1.5 max-w-[220px] leading-relaxed">
-              点击左侧文件可以重新展开预览面板。
+              {t("preview.collapsed.hint")}
             </p>
           </div>
         ) : null}

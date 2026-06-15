@@ -1,8 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "node",
+    // 扩展运行时由 esbuild 打包成单文件 CJS（见 esbuild.config.mjs）。
+    // TS 类型检查层面：源码写作 ESM（继承 base 的 module/moduleResolution）即可，
+    // esbuild 会处理模块边界。这样既避免了 node10→node16 升级时的 TS1479/1541（core 是 ESM），
+    // 也消除了 moduleResolution: "node" 的弃用警告。
     "outDir": "./dist",
     "rootDir": "./src",
     "types": ["node"],

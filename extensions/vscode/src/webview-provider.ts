@@ -606,7 +606,11 @@ export class MemoryBoardWebviewCore {
             payload: {
               preferences: prefs,
               showRedirectSelector: this.showRedirectSelector,
-              isAgy: this.showRedirectSelector // 兼容旧版 isAgy 命名
+              isAgy: this.showRedirectSelector, // 兼容旧版 isAgy 命名
+              // 注入扩展端当前显示语言（如 "zh-cn"/"en"），供 webview 端 i18n 选用翻译资源。
+              // VS Code 切换 Display Language 必然重启窗口（没有运行时事件），webview 也随之重建，
+              // 因此无需 push 推送，webview 启动读取一次即可。
+              language: vscode.env.language,
             },
             error: null,
           };

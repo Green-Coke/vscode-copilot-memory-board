@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { ArrowUp, ArrowDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { SortBy, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 
@@ -23,12 +24,17 @@ interface SortControlProps {
 /** 默认允许字段：名称与创建时间 */
 const DEFAULT_FIELDS: SortBy[] = ["name", "createdAt"];
 
-/** 字段中文标签 */
-const FIELD_LABELS: Record<SortBy, string> = {
-  name: "名称",
-  createdAt: "创建时间",
-  updatedAt: "更新时间",
-};
+/**
+ * 根据当前 i18n 实例动态生成本次渲染的排序字段标签映射。
+ * 原先存在模块顶层的 FieldLabels 常量里包含中文文案，i18n 后必须改为函数获取（依赖 t）。
+ */
+function createFieldLabels(t: (key: string) => string): Record<SortBy, string> {
+  return {
+    name: t("sort.field.name"),
+    createdAt: t("sort.field.created"),
+    updatedAt: t("sort.field.updated"),
+  };
+}
 
 /**
  * 渲染一个紧凑的排序下拉 + 方向切换组合。
@@ -41,7 +47,9 @@ export function SortControl({
   availableFields = DEFAULT_FIELDS,
   testIdScope,
 }: SortControlProps) {
+  const { t } = useTranslation();
   const fields = availableFields;
+  const fieldLabels = createFieldLabels(t);
 
   /**
    * 切换排序方向的处理函数
@@ -62,7 +70,7 @@ export function SortControl({
       {/* 排序字段下拉选择器：优先显示在左侧 */}
       <select
         data-testid={`sort-by-${testIdScope}`}
-        aria-label="排序字段"
+        aria-label={t("sort.aria")}
         value={value.by}
         onChange={(e) => {
           const next = e.target.value as SortBy;
@@ -75,7 +83,7 @@ export function SortControl({
       >
         {fields.map((field) => (
           <option key={field} value={field}>
-            {FIELD_LABELS[field]}
+            {fieldLabels[field]}
           </option>
         ))}
       </select>
@@ -85,7 +93,7 @@ export function SortControl({
         data-testid={`sort-direction-${testIdScope}`}
         type="button"
         onClick={handleToggleDirection}
-        title={value.direction === "asc" ? "当前正序（上箭头高亮），点击切换为倒序" : "当前倒序（下箭头高亮），点击切换为正序"}
+        title={value.direction === "asc" ? t("sort.tooltip.ascending") : t("sort.tooltip.descending")}
         className="p-1 rounded border border-border-default bg-surface-2 hover:border-brand-indigo cursor-pointer flex items-center gap-0.5 transition-colors shrink-0"
       >
         <ArrowUp

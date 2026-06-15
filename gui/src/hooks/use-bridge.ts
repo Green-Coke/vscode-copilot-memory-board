@@ -19,6 +19,7 @@ import {
   DEFAULT_WORKSPACE_STATE,
 } from "@memory-board/core";
 import { sendRequest, onPushMessage } from "@/lib/bridge";
+import i18n, { isSupportedLocale } from "@/i18n";
 
 // ---------------------------------------------------------------------------
 // Generic Async Data Hook
@@ -205,6 +206,9 @@ export function useUiPreferences(): UiPreferencesState {
           preferences: UiPreferences;
           showRedirectSelector?: boolean;
           isAgy?: boolean;
+          // 扩展端注入的当前显示语言（vscode.env.language，如 "zh-cn"/"en"/"en-US"）
+          // 可选：standalone 模式下不存在，沿用 i18n 初始化时根据 navigator.language 选定的默认语言
+          language?: string;
         };
         setPreferences({ ...DEFAULT_UI_PREFERENCES, ...payload.preferences });
         
@@ -213,6 +217,16 @@ export function useUiPreferences(): UiPreferencesState {
           setShowRedirectSelector(payload.showRedirectSelector);
         } else if (payload.isAgy !== undefined) {
           setShowRedirectSelector(payload.isAgy);
+        }
+
+        // 注入显示语言：把 vscode.env.language 映射到支持的 locale（zh-cn / en）后切换
+        // 切换是异步的，React 组件用 useTranslation() 会自动 re-render
+        if (payload.language) {
+          const targetLocale = isSupportedLocale(payload.language);
+          // 仅在语言实际变化时调用 changeLanguage（避免初始化时的多余 re-render）
+          if (i18n.language !== targetLocale) {
+            void i18n.changeLanguage(targetLocale);
+          }
         }
       } catch (err) {
         console.warn("[useUiPreferences] 读取偏好异常:", err);

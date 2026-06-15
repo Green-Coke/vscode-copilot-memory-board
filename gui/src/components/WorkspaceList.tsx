@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import type { Workspace, SortOption, UiPreferences } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { FolderGit2, Clock, ChevronRight, Search, X, Link, FolderOpen } from "lucide-react";
@@ -61,6 +62,7 @@ export function WorkspaceList({
   onlyShowWithMemories,
   onOnlyShowWithMemoriesChange,
 }: WorkspaceListProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const copyPath = useCopyPath();
   const revealInOs = useRevealInOs();
@@ -154,11 +156,11 @@ export function WorkspaceList({
               value={preferences.ideRedirectTarget ?? "stable"}
               onValueChange={(val) => onPreferencesChange({ ideRedirectTarget: val as any })}
               options={[
-                { value: "stable", label: "Stable (稳定版)" },
-                { value: "insiders", label: "Insiders (体验版)" },
-                { value: "none", label: "Disabled (禁用)" },
+                { value: "stable", label: t("workspaces.ide.stable") },
+                { value: "insiders", label: t("workspaces.ide.insiders") },
+                { value: "none", label: t("workspaces.ide.disabled") },
               ]}
-              title="处于第三方 IDE 环境时，可在此快速切换读取 VS Code 稳定版或体验版制造的 Copilot memories 缓存"
+              title={t("workspaces.ide.tooltip")}
             />
           </div>
         ) : (
@@ -187,10 +189,10 @@ export function WorkspaceList({
             <FolderGit2 className="absolute w-6 h-6 text-brand-indigo animate-pulse" />
           </div>
           <h3 className="text-xs font-bold tracking-wider text-text-primary uppercase font-display">
-            暂无工作区
+            {t("workspaces.empty.title")}
           </h3>
           <p className="text-[11px] text-text-secondary mt-1.5 max-w-[200px] leading-relaxed">
-            在本工作区使用 Copilot Chat 后，记忆会自动同步到此处。
+            {t("workspaces.empty.hint")}
           </p>
         </div>
       ) : (
@@ -204,7 +206,7 @@ export function WorkspaceList({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
-                  aria-label="搜索工作区"
+                  aria-label={t("workspaces.search.aria")}
                 />
                 {/* 存在搜索词时清空按钮自动向左避让，放大镜固定在最右侧，避免二者重叠 */}
                 {searchQuery ? (
@@ -218,7 +220,7 @@ export function WorkspaceList({
                 <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
               </div>
               <FilterDropdown
-                label="只展示有记忆的工作区"
+                label={t("workspaces.filter.onlyWithMemories")}
                 checked={onlyShowWithMemories}
                 onToggle={onOnlyShowWithMemoriesChange}
                 testIdScope="workspace"
@@ -230,7 +232,7 @@ export function WorkspaceList({
           <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
             {pinned.length === 0 && unpinned.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center font-mono text-[11px] text-text-muted">
-                未找到匹配的工作区
+                {t("workspaces.noMatch")}
               </div>
             ) : (
               <>
@@ -275,7 +277,7 @@ export function WorkspaceList({
                       "shadow-[0_0_8px_rgba(99,102,241,0.1)] hover:shadow-[0_0_12px_rgba(99,102,241,0.25)]"
                     )}
                   >
-                    加载更多（剩余 {unpinned.length - visibleCount} 项）
+                    {t("common.loadMore", { count: unpinned.length - visibleCount })}
                   </button>
                 )}
               </>
@@ -447,7 +449,7 @@ export function WorkspaceList({
               )}
             >
               <Link className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">复制项目路径</span>
+              <span className="flex-1">{t("workspaces.menu.copyProjectPath")}</span>
             </ContextMenu.Item>
             <ContextMenu.Item
               disabled={!workspace.storagePath}
@@ -461,7 +463,7 @@ export function WorkspaceList({
               )}
             >
               <Link className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">复制存储路径</span>
+              <span className="flex-1">{t("workspaces.menu.copyStoragePath")}</span>
             </ContextMenu.Item>
             
             <ContextMenu.Separator className="h-px bg-border-subtle/40 my-1 mx-2" />
@@ -478,7 +480,7 @@ export function WorkspaceList({
               )}
             >
               <FolderOpen className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">在资源管理器中打开项目</span>
+              <span className="flex-1">{t("workspaces.menu.revealProject")}</span>
             </ContextMenu.Item>
             <ContextMenu.Item
               disabled={!workspace.storagePath}
@@ -492,7 +494,7 @@ export function WorkspaceList({
               )}
             >
               <FolderOpen className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">在资源管理器中打开存储目录</span>
+              <span className="flex-1">{t("workspaces.menu.revealStorage")}</span>
             </ContextMenu.Item>
           </ContextMenu.Content>
         </ContextMenu.Portal>

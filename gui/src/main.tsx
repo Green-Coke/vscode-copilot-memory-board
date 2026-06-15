@@ -13,6 +13,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./index.css";
+// i18n 副作用 import：触发 i18next 初始化，保证 React 首次渲染之前翻译就绪
+// VS Code 默认 lng=en，由 useUiPreferences() 拿到 vscode.env.language 后调 changeLanguage 覆盖
+// Standalone 模式根据 navigator.language 直接选定
+import "./i18n";
 
 const rootElement = document.getElementById("root");
 

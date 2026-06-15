@@ -2,7 +2,7 @@
   "name": "vscode-copilot-memory-board",
   "displayName": "Copilot Memory Board",
   "description": "Visualize and manage GitHub Copilot's memory as an interactive board in VS Code.",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "Green-Coke",
   "icon": "resources/icon.png",
   "license": "MIT",

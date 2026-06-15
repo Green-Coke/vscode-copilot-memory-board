@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { type ReactNode, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getBridgeEnvironment, readScanTarget, writeScanTarget, type ScanTarget } from "@/lib/bridge";
 import {
@@ -51,6 +52,7 @@ function NarrowHeader({
   viewingWorkspaceFiles = false,
   action,
 }: NarrowHeaderProps) {
+  const { t } = useTranslation();
   if (currentView === "workspaces") return null;
 
   const handleBack = currentView === "entries" ? onBackToSessions : onBackToWorkspaces;
@@ -69,7 +71,7 @@ function NarrowHeader({
         <button
           onClick={handleBack}
           className="p-1 rounded hover:bg-surface-3 transition-colors text-text-secondary hover:text-brand-indigo cursor-pointer flex items-center justify-center shrink-0"
-          title="返回上一级"
+          title={t("layout.back")}
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -91,7 +93,8 @@ function NarrowHeader({
 // ---------------------------------------------------------------------------
 
 interface PanelProps {
-  title: string;
+  // title 可空：当 hideTitle=true 或仅作为容器时，title 可不传
+  title?: string;
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -101,6 +104,12 @@ interface PanelProps {
    * VS Code 模式下，仓库折叠按钮挂在这里，避免浮层与标题图标/文字重叠。
    */
   leadingAction?: ReactNode;
+  /**
+   * 是否完全隐藏标题/图标区，仅保留 leadingAction 与尾部 action。
+   * 与原先 `title === "工作区" && leadingAction` 硬编码判断等价，
+   * 但解除对翻译字符串值的依赖（i18n 后不能再用字符串等值判断分支）。
+   */
+  hideTitle?: boolean;
   /**
    * 窄屏单栏模式下，是否隐藏该 Panel 的自带头部标题栏（避免与外部窄屏顶部返回头冲突）
    */
@@ -118,11 +127,13 @@ export function Panel({
   className,
   action,
   leadingAction,
+  hideTitle = false,
   hideHeaderInNarrow = false,
 }: PanelProps) {
   // 这是一个面板容器组件，主要负责统一管理标题栏和可滚动内容区。
-  // 若标题是 "工作区" 且传入了折叠按钮 leadingAction，则只显示折叠按钮，隐藏图标和标题以防左上角发生重叠。
-  const shouldHideTitleAndIcon = title === "工作区" && leadingAction;
+  // hideTitle=true 且传入了折叠按钮 leadingAction 时，仅显示折叠按钮，隐藏图标和标题防左上角重叠。
+  // （原先依赖 title === "工作区" 字符串等值判断，i18n 后改为显式 hideTitle prop 彻底解耦）
+  const shouldHideTitleAndIcon = hideTitle && leadingAction;
 
   return (
     <div className={cn("flex flex-col h-full min-h-0 relative z-10", className)}>
@@ -183,6 +194,7 @@ export function AppHeader({
   selectedWorkspace,
   onSelectWorkspace
 }: AppHeaderProps) {
+  const { t } = useTranslation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   // Standalone 扫描目标：Stable / Insiders。仅 standalone 模式渲染（VS Code 模式直接走真实 storageUri）
   const [scanTarget, setScanTarget] = useState<ScanTarget>(() => readScanTarget());
@@ -248,7 +260,7 @@ export function AppHeader({
               className="flex items-center gap-2 px-4 py-1.5 rounded bg-surface-2 border border-border-default hover:border-brand-indigo transition-colors cursor-pointer text-text-primary font-medium"
             >
               <FolderGit2 className="w-4 h-4 text-brand-indigo" />
-              <span className="max-w-[220px] truncate">{selectedWorkspace ? selectedWorkspace.name : "选择工作区…"}</span>
+              <span className="max-w-[220px] truncate">{selectedWorkspace ? selectedWorkspace.name : t("layout.workspaceSelect.placeholder")}</span>
               <ChevronDown className={cn("w-3.5 h-3.5 text-text-muted transition-transform duration-200", isDropdownOpen && "rotate-180")} />
             </button>
 
@@ -257,7 +269,7 @@ export function AppHeader({
                 <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
                 <div className="absolute right-0 mt-1.5 w-80 max-h-80 overflow-y-auto rounded-lg border border-border-default bg-surface-2 shadow-xl z-50 p-1 flex flex-col gap-1 backdrop-blur-md">
                   <div className="px-2 py-1.5 text-[10px] font-bold tracking-widest text-text-muted font-display uppercase border-b border-border-subtle mb-1">
-                    切换工作区
+                    {t("layout.switchWorkspaceTitle")}
                   </div>
                   {workspaces.map((workspace) => {
                     const isSelected = selectedWorkspace?.id === workspace.id;
@@ -305,10 +317,10 @@ export function AppHeader({
           value={scanTarget}
           onValueChange={(val) => handleToggleScanTarget(val as ScanTarget)}
           options={[
-            { value: "stable", label: "Stable (稳定版)" },
-            { value: "insiders", label: "Insiders (体验版)" },
+            { value: "stable", label: t("workspaces.ide.stable") },
+            { value: "insiders", label: t("workspaces.ide.insiders") },
           ]}
-          title="切换扫描 VS Code 正式版 (Stable) 或体验版 (Insiders) 制造的 Copilot memories 缓存"
+          title={t("workspaces.ide.tooltip")}
           className="hidden sm:flex"
         />
       </div>
@@ -366,6 +378,7 @@ export function WorkspaceCollapseButton({
   onToggle: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -374,10 +387,10 @@ export function WorkspaceCollapseButton({
       aria-disabled={disabled}
       title={
         disabled
-          ? "未选择工作区时不可折叠"
+          ? t("workspaces.collapse.disabled")
           : collapsed
-            ? "展开工作区栏"
-            : "折叠工作区栏"
+            ? t("workspaces.collapse.expand")
+            : t("workspaces.collapse.collapse")
       }
       className={cn(
         "p-1.5 rounded transition-colors flex items-center justify-center shrink-0 min-[900px]:flex hidden",
