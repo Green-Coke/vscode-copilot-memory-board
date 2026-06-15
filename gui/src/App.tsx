@@ -256,6 +256,10 @@ export function App() {
             showRedirectSelector={showRedirectSelector}
             isAgy={isAgy}
             onPreferencesChange={updateUiPreferences}
+            onlyShowWithMemories={workspaceState.onlyShowWithMemories}
+            onOnlyShowWithMemoriesChange={(v) =>
+              updateWorkspaceState({ onlyShowWithMemories: v })
+            }
           />
         </Panel>
       }
@@ -281,6 +285,10 @@ export function App() {
             pinnedIds={workspaceState.pinnedSessionIds}
             onPinnedChange={(next) =>
               updateWorkspaceState({ pinnedSessionIds: next })
+            }
+            onlyShowWithEntries={workspaceState.onlyShowWithEntries}
+            onOnlyShowWithEntriesChange={(v) =>
+              updateWorkspaceState({ onlyShowWithEntries: v })
             }
           />
         </Panel>

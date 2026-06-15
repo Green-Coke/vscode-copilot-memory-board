@@ -255,3 +255,54 @@ test.describe("第三方 IDE 缓存重定向切换按钮展示", () => {
   });
 });
 
+test.describe("过滤与前端分页", () => {
+  test("工作区列表支持有记忆过滤与分页加载", async ({ page }) => {
+    await page.goto("/");
+    
+    // 检查工作区过滤按钮触发器是否存在
+    const filterTrigger = page.locator('[data-testid="filter-trigger-workspace"]').first();
+    await expect(filterTrigger).toBeVisible();
+
+    // 点击过滤按钮打开下拉菜单
+    await filterTrigger.click();
+
+    const filterOption = page.locator('[data-testid="filter-option-workspace"]').first();
+    await expect(filterOption).toBeVisible();
+    await expect(filterOption).toContainText("只展示有记忆的工作区");
+
+    // 勾选过滤
+    await filterOption.click();
+
+    // 勾选后验证 localStorage 持久化了该选项
+    const afterState = await page.evaluate(() =>
+      localStorage.getItem("memory-board:workspace-state")
+    );
+    expect(afterState).toContain('"onlyShowWithMemories":true');
+  });
+
+  test("会话列表支持有条目过滤与分页加载", async ({ page }) => {
+    await page.goto("/");
+    // 点击进入第一个工作区以展现会话列表
+    await page.locator('[data-testid^="workspace-item-"]').first().click();
+
+    // 检查会话过滤按钮触发器是否存在
+    const filterTrigger = page.locator('[data-testid="filter-trigger-session"]').first();
+    await expect(filterTrigger).toBeVisible();
+
+    // 点击过滤按钮打开下拉菜单
+    await filterTrigger.click();
+    const filterOption = page.locator('[data-testid="filter-option-session"]').first();
+    await expect(filterOption).toBeVisible();
+    await expect(filterOption).toContainText("只展示有条目的会话");
+    
+    // 勾选过滤
+    await filterOption.click();
+
+    // 验证状态持久化写入 localStorage
+    const stored = await page.evaluate(() =>
+      localStorage.getItem("memory-board:workspace-state")
+    );
+    expect(stored).toContain('"onlyShowWithEntries":true');
+  });
+});
+

@@ -2,7 +2,7 @@
   "name": "vscode-copilot-memory-board",
   "displayName": "Copilot Memory Board",
   "description": "Visualize and manage GitHub Copilot's memory as an interactive board in VS Code.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "Green-Coke",
   "icon": "resources/icon.png",
   "license": "MIT",
@@ -145,11 +145,11 @@
   },
   "scripts": {
     "vscode:prepublish": "pnpm run build",
-    "build": "node esbuild.config.mjs",
+    "build": "node -e \"const fs=require('fs'); if(fs.existsSync('../../README.md')) fs.copyFileSync('../../README.md','README.md'); if(fs.existsSync('../../LICENSE')) fs.copyFileSync('../../LICENSE','LICENSE')\" && node esbuild.config.mjs",
     "build:webview": "node -e \"const fs=require('fs'),p=require('path');const src=p.resolve('../../gui/dist');const dst=p.resolve('./resources/webview');fs.cpSync(src,dst,{recursive:true})\"",
     "package": "npx @vscode/vsce package --no-dependencies -o ../../.tmp/publish/vscode/memory-board.vsix",
     "typecheck": "tsc --noEmit",
-    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('resources/webview',{recursive:true,force:true})\""
+    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('resources/webview',{recursive:true,force:true});fs.rmSync('README.md',{force:true});fs.rmSync('LICENSE',{force:true});fs.rmSync('tsconfig.tsbuildinfo',{force:true})\""
   },
   "dependencies": {},
   "devDependencies": {

@@ -189,6 +189,10 @@ export interface WorkspaceState {
   pinnedWorkspaceIds: string[];
   /** 已钉选的 session ID 集合 */
   pinnedSessionIds: string[];
+  /** 仅展示有记忆的工作区（过滤 sessionCount === 0） */
+  onlyShowWithMemories: boolean;
+  /** 仅展示有条目的会话（过滤 entryCount === 0） */
+  onlyShowWithEntries: boolean;
 };
 
 /**
@@ -202,6 +206,8 @@ export const DEFAULT_WORKSPACE_STATE: WorkspaceState = {
   previewVisible: true,
   pinnedWorkspaceIds: [],
   pinnedSessionIds: [],
+  onlyShowWithMemories: false,
+  onlyShowWithEntries: false,
 };
 
 /**

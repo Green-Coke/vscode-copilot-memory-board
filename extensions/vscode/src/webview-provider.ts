@@ -897,6 +897,10 @@ export class MemoryBoardWebviewCore {
       previewVisible: DEFAULT_WORKSPACE_STATE.previewVisible,
       pinnedWorkspaceIds: [...DEFAULT_WORKSPACE_STATE.pinnedWorkspaceIds],
       pinnedSessionIds: [...DEFAULT_WORKSPACE_STATE.pinnedSessionIds],
+      // 仅展示有记忆的工作区状态（v0.0.2 新增；必须在此补齐，否则 VS Code 模式下会被合并函数丢失）
+      onlyShowWithMemories: DEFAULT_WORKSPACE_STATE.onlyShowWithMemories,
+      // 仅展示有条目的会话状态（同上）
+      onlyShowWithEntries: DEFAULT_WORKSPACE_STATE.onlyShowWithEntries,
     };
   }
 
@@ -914,6 +918,10 @@ export class MemoryBoardWebviewCore {
       previewVisible: patch.previewVisible ?? base.previewVisible,
       pinnedWorkspaceIds: patch.pinnedWorkspaceIds ?? base.pinnedWorkspaceIds,
       pinnedSessionIds: patch.pinnedSessionIds ?? base.pinnedSessionIds,
+      // 仅展示有记忆的工作区（v0.0.2 新增；漏写此处会导致 webview 写入的状态在 VS Code 模式下被悄悄回退到默认值 false）
+      onlyShowWithMemories: patch.onlyShowWithMemories ?? base.onlyShowWithMemories,
+      // 仅展示有条目的会话（同上）
+      onlyShowWithEntries: patch.onlyShowWithEntries ?? base.onlyShowWithEntries,
     };
   }
 

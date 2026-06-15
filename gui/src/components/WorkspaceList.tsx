@@ -2,7 +2,7 @@
 // WorkspaceList — 工作区列表面板（含搜索）
 // ============================================================================
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Workspace, SortOption, UiPreferences } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { FolderGit2, Clock, ChevronRight, Search, X, Link, FolderOpen } from "lucide-react";
@@ -12,6 +12,7 @@ import { sortItems } from "@/lib/sort-utils";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { useCopyPath, useRevealInOs } from "@/hooks/use-bridge";
 import { CustomSelect } from "@/components/CustomSelect";
+import { FilterDropdown } from "@/components/FilterDropdown";
 
 interface WorkspaceListProps {
   /** 工作区列表 */
@@ -38,6 +39,10 @@ interface WorkspaceListProps {
   isAgy?: boolean;
   /** 更新偏好回调 */
   onPreferencesChange?: (patch: Partial<UiPreferences>) => Promise<void>;
+  /** 仅展示有记忆的工作区（受控） */
+  onlyShowWithMemories: boolean;
+  /** 切换过滤回调（受控，回写持久层） */
+  onOnlyShowWithMemoriesChange: (next: boolean) => void;
 }
 
 export function WorkspaceList({
@@ -53,25 +58,53 @@ export function WorkspaceList({
   showRedirectSelector,
   isAgy,
   onPreferencesChange,
+  onlyShowWithMemories,
+  onOnlyShowWithMemoriesChange,
 }: WorkspaceListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const copyPath = useCopyPath();
   const revealInOs = useRevealInOs();
 
   // ---------------------------------------------------------------------------
-  // 搜索过滤 + 排序 + 钉选分组
+  // 分页状态与重置 Effect
+  // ---------------------------------------------------------------------------
+  const [visibleCount, setVisibleCount] = useState(5);
+
+  // 关键：当搜索词、排序方式或过滤条件改变时，重置分页展示数量为默认 5 项
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [searchQuery, sortOption, onlyShowWithMemories]);
+
+  // ---------------------------------------------------------------------------
+  // 搜索过滤 + 仅展示有记忆过滤 + 排序 + 钉选分组
   // 钉选项始终排在最上方；钉选组与非钉选组各自按当前 sortOption 排序
   // ---------------------------------------------------------------------------
   const { pinned, unpinned } = useMemo(() => {
-    const filtered = workspaces.filter((workspace) =>
+    // 1. 关键字搜索过滤
+    let filtered = workspaces.filter((workspace) =>
       workspace.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // 2. 仅展示有记忆的工作区过滤 (sessionCount > 0)
+    if (onlyShowWithMemories) {
+      filtered = filtered.filter((w) => w.sessionCount > 0);
+    }
+
+    // 3. 统一排序
     const sortedAll = sortItems(filtered, sortOption);
+
     return {
       pinned: sortedAll.filter((w) => pinnedIds.includes(w.id)),
       unpinned: sortedAll.filter((w) => !pinnedIds.includes(w.id)),
     };
-  }, [workspaces, searchQuery, sortOption, pinnedIds]);
+  }, [workspaces, searchQuery, sortOption, pinnedIds, onlyShowWithMemories]);
+
+  // 分页：只对 unpinned 列表做 slice 截断，pinned 列表保持全展
+  const visibleUnpinned = useMemo(() => {
+    return unpinned.slice(0, visibleCount);
+  }, [unpinned, visibleCount]);
+
+  const hasMore = unpinned.length > visibleCount;
 
   /** 切换某工作区的钉选状态 */
   const togglePin = (workspaceId: string) => {
@@ -164,24 +197,32 @@ export function WorkspaceList({
         <>
           {/* Search Input Box */}
           <div className="p-3 border-b border-border-default bg-surface-1/20 z-10 relative">
-            <div className="relative flex items-center w-full">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
-                aria-label="搜索工作区"
+            <div className="flex items-center gap-2 w-full">
+              <div className="relative flex-1 flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
+                  aria-label="搜索工作区"
+                />
+                {/* 存在搜索词时清空按钮自动向左避让，放大镜固定在最右侧，避免二者重叠 */}
+                {searchQuery ? (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                ) : null}
+                <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
+              </div>
+              <FilterDropdown
+                label="只展示有记忆的工作区"
+                checked={onlyShowWithMemories}
+                onToggle={onOnlyShowWithMemoriesChange}
+                testIdScope="workspace"
               />
-              {/* 存在搜索词时清空按钮自动向左避让，放大镜固定在最右侧，避免二者重叠 */}
-              {searchQuery ? (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              ) : null}
-              <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
             </div>
           </div>
 
@@ -218,8 +259,24 @@ export function WorkspaceList({
                   </>
                 )}
                 {/* 非钉选分组 */}
-                {unpinned.map((workspace, index) =>
+                {visibleUnpinned.map((workspace, index) =>
                   renderWorkspace(workspace, index, false)
+                )}
+
+                {/* 加载更多按钮：当未展示项大于当前展示项时呈现，呼应 Cyber 风格的微弱发光 */}
+                {hasMore && (
+                  <button
+                    data-testid="load-more-workspaces"
+                    onClick={() => setVisibleCount((c) => c + 5)}
+                    className={cn(
+                      "w-full py-2 px-4 mt-1 rounded-lg cursor-pointer text-center font-mono text-[10px] font-bold tracking-wider",
+                      "transition-all duration-300",
+                      "bg-gradient-to-r from-brand-indigo/10 to-brand-purple/10 border border-brand-indigo/35 text-brand-indigo hover:text-brand-indigo/90 hover:from-brand-indigo/15 hover:to-brand-purple/15",
+                      "shadow-[0_0_8px_rgba(99,102,241,0.1)] hover:shadow-[0_0_12px_rgba(99,102,241,0.25)]"
+                    )}
+                  >
+                    加载更多（剩余 {unpinned.length - visibleCount} 项）
+                  </button>
                 )}
               </>
             )}

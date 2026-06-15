@@ -234,6 +234,10 @@ function cloneDefaultWorkspaceState(): WorkspaceState {
     previewVisible: DEFAULT_WORKSPACE_STATE.previewVisible,
     pinnedWorkspaceIds: [...DEFAULT_WORKSPACE_STATE.pinnedWorkspaceIds],
     pinnedSessionIds: [...DEFAULT_WORKSPACE_STATE.pinnedSessionIds],
+    // 仅展示有记忆的工作区状态默认值
+    onlyShowWithMemories: DEFAULT_WORKSPACE_STATE.onlyShowWithMemories,
+    // 仅展示有条目的会话状态默认值
+    onlyShowWithEntries: DEFAULT_WORKSPACE_STATE.onlyShowWithEntries,
   };
 }
 

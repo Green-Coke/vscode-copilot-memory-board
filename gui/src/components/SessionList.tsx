@@ -2,7 +2,7 @@
 // SessionList — Session List Panel with Search
 // ============================================================================
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Session, SortOption } from "@memory-board/core";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Calendar, ChevronRight, Search, X, FolderTree, Link, FolderOpen } from "lucide-react";
@@ -11,6 +11,7 @@ import { SortControl } from "@/components/SortControl";
 import { sortItems } from "@/lib/sort-utils";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { useCopyPath, useRevealInOs } from "@/hooks/use-bridge";
+import { FilterDropdown } from "@/components/FilterDropdown";
 
 interface SessionListProps {
   sessions: Session[];
@@ -31,6 +32,10 @@ interface SessionListProps {
   pinnedIds: string[];
   /** 钉选集合变化回调（受控） */
   onPinnedChange: (next: string[]) => void;
+  /** 仅展示有条目的会话（受控） */
+  onlyShowWithEntries: boolean;
+  /** 切换过滤回调（受控，回写持久层） */
+  onOnlyShowWithEntriesChange: (next: boolean) => void;
 }
 
 export function SessionList({
@@ -45,31 +50,58 @@ export function SessionList({
   onSortChange,
   pinnedIds,
   onPinnedChange,
+  onlyShowWithEntries,
+  onOnlyShowWithEntriesChange,
 }: SessionListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const copyPath = useCopyPath();
   const revealInOs = useRevealInOs();
 
+  // ---------------------------------------------------------------------------
+  // 分页状态与重置 Effect
+  // ---------------------------------------------------------------------------
+  const [visibleCount, setVisibleCount] = useState(5);
+
+  // 关键：当搜索词、排序方式或过滤条件改变时，重置分页展示数量为默认 5 项
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [searchQuery, sortOption, onlyShowWithEntries]);
+
   // 查找到工作区级目录的特殊 session 实例，用于右键复制/打开其路径
   const repoSession = useMemo(() => sessions.find((s) => s.isRepo), [sessions]);
 
   // ---------------------------------------------------------------------------
-  // 搜索过滤 + 排序 + 钉选分组
+  // 搜索过滤 + 仅展示有条目过滤 + 排序 + 钉选分组
   // 钉选项始终排在最上方；钉选组与非钉选组各自按当前 sortOption 排序
   // Session 用 title 作为“名称”参与排序，所以这里传入自定义 getName
   // ---------------------------------------------------------------------------
   const { pinned, unpinned } = useMemo(() => {
-    const filtered = sessions.filter((session) =>
-      // 过滤掉特殊的 repo 工作区级目录 session，因为该入口已单独在列表最上方作为独立分区渲染
+    // 1. 过滤掉特殊的 repo 工作区级目录 session 并按搜索词搜索过滤
+    let filtered = sessions.filter((session) =>
       !session.isRepo &&
       session.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // 2. 仅保留有条目的会话过滤 (entryCount > 0)
+    if (onlyShowWithEntries) {
+      filtered = filtered.filter((s) => s.entryCount > 0);
+    }
+
+    // 3. 统一排序
     const sortedAll = sortItems(filtered, sortOption, (s) => s.title);
+
     return {
       pinned: sortedAll.filter((s) => pinnedIds.includes(s.id)),
       unpinned: sortedAll.filter((s) => !pinnedIds.includes(s.id)),
     };
-  }, [sessions, searchQuery, sortOption, pinnedIds]);
+  }, [sessions, searchQuery, sortOption, pinnedIds, onlyShowWithEntries]);
+
+  // 分页：只对 unpinned 列表做 slice 截断，pinned 列表保持全展
+  const visibleUnpinned = useMemo(() => {
+    return unpinned.slice(0, visibleCount);
+  }, [unpinned, visibleCount]);
+
+  const hasMore = unpinned.length > visibleCount;
 
   /** 切换某 session 的钉选状态 */
   const togglePin = (sessionId: string) => {
@@ -164,24 +196,32 @@ export function SessionList({
 
       {/* Search Input Box */}
       <div className="p-3 border-b border-border-default bg-surface-1/20 z-10 relative">
-        <div className="relative flex items-center w-full">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
-            aria-label="搜索会话"
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1 flex items-center">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="cyber-input w-full pl-3 pr-9 py-1.5 font-sans font-medium"
+              aria-label="搜索会话"
+            />
+            {/* 搜索放大镜固定在右侧；存在搜索词时清空按钮自动向左避让，避免重叠 */}
+            {searchQuery ? (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
+            <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
+          </div>
+          <FilterDropdown
+            label="只展示有条目的会话"
+            checked={onlyShowWithEntries}
+            onToggle={onOnlyShowWithEntriesChange}
+            testIdScope="session"
           />
-          {/* 搜索放大镜固定在右侧；存在搜索词时清空按钮自动向左避让，避免重叠 */}
-          {searchQuery ? (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-8 text-text-muted hover:text-text-primary p-0.5 rounded cursor-pointer flex items-center justify-center"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          ) : null}
-          <Search className="absolute right-3 w-4 h-4 text-text-muted pointer-events-none" />
         </div>
       </div>
 
@@ -326,7 +366,23 @@ export function SessionList({
               </>
             )}
             {/* 非钉选分组 */}
-            {unpinned.map((session, index) => renderSession(session, index, false))}
+            {visibleUnpinned.map((session, index) => renderSession(session, index, false))}
+
+            {/* 加载更多按钮：当未展示项大于当前展示项时呈现，呼应 Cyber 风格的微弱发光 */}
+            {hasMore && (
+              <button
+                data-testid="load-more-sessions"
+                onClick={() => setVisibleCount((c) => c + 5)}
+                className={cn(
+                  "w-full py-2 px-4 mt-1 rounded-lg cursor-pointer text-center font-mono text-[10px] font-bold tracking-wider",
+                  "transition-all duration-300",
+                  "bg-gradient-to-r from-brand-indigo/10 to-brand-purple/10 border border-brand-indigo/35 text-brand-indigo hover:text-brand-indigo/90 hover:from-brand-indigo/15 hover:to-brand-purple/15",
+                  "shadow-[0_0_8px_rgba(99,102,241,0.1)] hover:shadow-[0_0_12px_rgba(99,102,241,0.25)]"
+                )}
+              >
+                加载更多（剩余 {unpinned.length - visibleCount} 项）
+              </button>
+            )}
           </>
         )}
       </div>
