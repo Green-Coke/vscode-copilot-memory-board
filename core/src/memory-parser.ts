@@ -307,6 +307,8 @@ export class MemoryParser {
       createdAt: memoriesStat
         ? toIso(memoriesStat.birthtime ?? memoriesStat.ctime)
         : new Date(0).toISOString(),
+      // 填充该工作区对应的本地 workspaceStorage 物理绝对目录路径，用于右键菜单的“在资源管理器中打开存储目录”与复制路径功能
+      storagePath: path.join(this.basePath, workspaceId),
     };
   }
 

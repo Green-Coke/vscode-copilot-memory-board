@@ -768,10 +768,24 @@ export class MemoryBoardWebviewCore {
 
         case MessageTypes.REVEAL_IN_OS: {
           const { path: revealPath } = message.payload as RevealInOsRequest["payload"];
+          // 如果 revealPath 是目录，且该目录下存在 workspace.json，为了在 OS 资源管理器中能够直接进入当前目录，
+          // 我们将定位目标指向 workspace.json，让系统资源管理器打开此工作区文件夹并高亮该文件。
+          let targetPath = revealPath;
+          try {
+            const stat = fs.statSync(revealPath);
+            if (stat.isDirectory()) {
+              const wsJson = path.join(revealPath, "workspace.json");
+              if (fs.existsSync(wsJson)) {
+                targetPath = wsJson;
+              }
+            }
+          } catch {
+            // 忽略异常，保持原路径
+          }
           // 使用 VS Code 内置命令在系统资源管理器中显示文件
           await vscode.commands.executeCommand(
             "revealFileInOS",
-            vscode.Uri.file(revealPath)
+            vscode.Uri.file(targetPath)
           );
           response = {
             type: message.type,
@@ -1234,10 +1248,23 @@ export class MemoryBoardWebviewCore {
     workspaceId?: string
   ): Promise<void> {
     let textToCopy = filePath;
+    // 如果复制的路径是目录，且该目录下存在 workspace.json，则将路径指向 workspace.json，以与在资源管理器中打开的行为一致
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        const wsJson = path.join(filePath, "workspace.json");
+        if (fs.existsSync(wsJson)) {
+          textToCopy = wsJson;
+        }
+      }
+    } catch {
+      // 忽略异常，保持原路径
+    }
+
     if (relative && workspaceId && this.workspaceStoragePath) {
       // 计算相对于 workspaceStorage/<workspaceId> 的路径
       const wsRoot = path.join(this.workspaceStoragePath, workspaceId);
-      const rel = path.relative(wsRoot, filePath);
+      const rel = path.relative(wsRoot, textToCopy);
       textToCopy = rel;
     }
     await vscode.env.clipboard.writeText(textToCopy);

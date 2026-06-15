@@ -236,7 +236,7 @@ export function WorkspaceList({
     const isSelected = selectedId === workspace.id;
     const workspacePinned = pinnedIds.includes(workspace.id);
 
-    // 复制工作区目录的绝对路径
+    // 复制工作区项目根目录的物理路径
     const handleCopyPath = async (e: Event) => {
       e.stopPropagation();
       if (workspace.path) {
@@ -248,7 +248,19 @@ export function WorkspaceList({
       }
     };
 
-    // 在系统资源管理器中打开工作区目录
+    // 复制工作区在本地缓存存储目录（workspaceStorage）的绝对物理路径
+    const handleCopyStoragePath = async (e: Event) => {
+      e.stopPropagation();
+      if (workspace.storagePath) {
+        try {
+          await copyPath(workspace.storagePath, false);
+        } catch (err) {
+          console.error("Failed to copy storage path:", err);
+        }
+      }
+    };
+
+    // 在系统资源管理器中打开工作区的项目目录
     const handleRevealInOs = async (e: Event) => {
       e.stopPropagation();
       if (workspace.path) {
@@ -256,6 +268,18 @@ export function WorkspaceList({
           await revealInOs(workspace.path);
         } catch (err) {
           console.error("Failed to reveal in OS:", err);
+        }
+      }
+    };
+
+    // 在系统资源管理器中打开工作区的缓存存储目录（workspaceStorage）
+    const handleRevealStorageInOs = async (e: Event) => {
+      e.stopPropagation();
+      if (workspace.storagePath) {
+        try {
+          await revealInOs(workspace.storagePath);
+        } catch (err) {
+          console.error("Failed to reveal storage in OS:", err);
         }
       }
     };
@@ -366,8 +390,25 @@ export function WorkspaceList({
               )}
             >
               <Link className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">复制路径</span>
+              <span className="flex-1">复制项目路径</span>
             </ContextMenu.Item>
+            <ContextMenu.Item
+              disabled={!workspace.storagePath}
+              onSelect={handleCopyStoragePath}
+              className={cn(
+                "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+                "outline-none select-none transition-colors",
+                !workspace.storagePath
+                  ? "text-text-muted/40 cursor-not-allowed"
+                  : "text-text-secondary hover:bg-surface-3/60 focus:bg-surface-3/60 hover:text-text-primary"
+              )}
+            >
+              <Link className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1">复制存储路径</span>
+            </ContextMenu.Item>
+            
+            <ContextMenu.Separator className="h-px bg-border-subtle/40 my-1 mx-2" />
+
             <ContextMenu.Item
               disabled={!workspace.path}
               onSelect={handleRevealInOs}
@@ -380,7 +421,21 @@ export function WorkspaceList({
               )}
             >
               <FolderOpen className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">在资源管理器中打开</span>
+              <span className="flex-1">在资源管理器中打开项目</span>
+            </ContextMenu.Item>
+            <ContextMenu.Item
+              disabled={!workspace.storagePath}
+              onSelect={handleRevealStorageInOs}
+              className={cn(
+                "flex items-center gap-3 pl-4 pr-3.5 py-1.5 text-[11px] font-mono rounded-sm cursor-pointer",
+                "outline-none select-none transition-colors",
+                !workspace.storagePath
+                  ? "text-text-muted/40 cursor-not-allowed"
+                  : "text-text-secondary hover:bg-surface-3/60 focus:bg-surface-3/60 hover:text-text-primary"
+              )}
+            >
+              <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1">在资源管理器中打开存储目录</span>
             </ContextMenu.Item>
           </ContextMenu.Content>
         </ContextMenu.Portal>

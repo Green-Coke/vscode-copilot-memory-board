@@ -12,7 +12,7 @@
  * 该目录下若存在 GitHub.copilot-chat/memory-tool/memories 子目录则视为"有记忆数据"。
  */
 export interface Workspace {
-  /** 工作区唯一标识符（workspaceStorage 下的 MD5 hex 目录名） */
+  /** 工作区唯一标识符（workspaceStorage 下 the MD5 hex 目录名） */
   id: string;
   /** 人类可读的工作区名称（从 workspace.json 的 folder URI 解码出 basename） */
   name: string;
@@ -27,6 +27,10 @@ export interface Workspace {
    * 真实实现中由 memories 目录的 fs birthtime/ctime 推导。
    */
   createdAt: string;
+  /**
+   * 该工作区在本地对应的 workspaceStorage 目录的物理绝对路径（可选）。
+   */
+  storagePath?: string;
 }
 
 /**

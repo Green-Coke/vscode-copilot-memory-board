@@ -182,6 +182,13 @@ describe("MemoryParser.scanWorkspaces", () => {
     expect(workspaces[0].sessionCount).toBe(3);
   });
 
+  it("应包含 storagePath 属性，指向对应的 workspaceStorage/<workspaceId> 目录", async () => {
+    const parser = new MemoryParser({ basePath: tmpDir });
+    const workspaces = await parser.scanWorkspaces();
+    // 验证 storagePath 是否等于临时测试目录与工作区 ID 的物理拼接路径
+    expect(workspaces[0].storagePath).toBe(path.join(tmpDir, WORKSPACE_ID));
+  });
+
   it("当 memories 目录不存在时，放宽过滤仍应扫描到该工作区，但 sessionCount 应为 0", async () => {
     // 创建一个只有 workspace.json 但没有 GitHub.copilot-chat 目录的假工作区
     const emptyWorkspaceId = "00000000000000000000000000000000";
