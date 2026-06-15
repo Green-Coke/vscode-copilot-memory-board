@@ -271,7 +271,9 @@ export function WorkspaceList({
               "animate-fade-in",
               isSelected
                 ? "bg-selected-bg border border-selected-border text-selected-text shadow-[inset_0_1px_10px_var(--ui-selected-glow)]"
-                : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary"
+                : "border border-transparent hover:bg-surface-3/50 hover:border-border-default hover:scale-[1.01] active:scale-[0.99] text-text-primary",
+              // 如果没有 session 且当前没有被选中，则应用轻微置灰与半透明样式
+              workspace.sessionCount === 0 && !isSelected && "opacity-60 grayscale-[30%]"
             )}
             style={{ animationDelay: `${index * 40}ms` }}
             onClick={() => onSelect(workspace)}

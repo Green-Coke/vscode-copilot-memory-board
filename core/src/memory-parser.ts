@@ -37,6 +37,8 @@ export interface MemoryParserOptions {
    * 若用户配置了自定义存放路径，可单独指定。
    */
   metadataBasePath?: string;
+  /** 是否过滤非 file 协议的远程工作区 */
+  filterRemoteWorkspaces?: boolean;
 }
 
 /**
@@ -52,6 +54,8 @@ export class MemoryParser {
   private readonly currentWorkspaceId: string | undefined;
   /** chatSessions 根目录（用于读取 session 元数据） */
   private metadataBasePath: string;
+  /** 是否过滤远程工作区 */
+  private readonly filterRemoteWorkspaces: boolean;
 
   constructor(opts: MemoryParserOptions | string) {
     // 兼容旧版直接传 basePath 字符串的写法
@@ -61,6 +65,7 @@ export class MemoryParser {
     this.basePath = opts.basePath;
     this.currentWorkspaceId = opts.currentWorkspaceId;
     this.metadataBasePath = opts.metadataBasePath ?? opts.basePath;
+    this.filterRemoteWorkspaces = typeof opts === "string" ? false : (opts.filterRemoteWorkspaces ?? false);
   }
 
   /**
@@ -275,18 +280,21 @@ export class MemoryParser {
 
   /**
    * 尝试为某个 workspaceId 构建 Workspace 对象。
-   * 如果该 workspace 没有 memories 目录，返回 undefined（视为无效工作区）。
+   * 支持最宽松的加载策略，即使 memories 目录不存在也允许构建该工作区对象，以显示所有有记录的工作区。
+   * 如果配置了过滤远程工作区并且该工作区为远程工作区（非 file 协议），则过滤并返回 undefined。
    */
   private async tryBuildWorkspace(workspaceId: string): Promise<Workspace | undefined> {
-    const memoriesDir = this.getMemoriesDir(workspaceId);
-    if (!(await this.pathExists(memoriesDir))) {
+    const folderUri = await this.tryReadWorkspaceFolderUri(workspaceId);
+
+    // 如果启用远程过滤，且 folderUri 明确不属于 file 协议（例如 vscode-remote://），则过滤掉
+    if (this.filterRemoteWorkspaces && folderUri && !folderUri.startsWith("file:")) {
       return undefined;
     }
 
-    const folderUri = await this.tryReadWorkspaceFolderUri(workspaceId);
     const folderPath = folderUri ? uriToFsPath(folderUri) : "";
     const name = folderPath ? path.basename(folderPath) : workspaceId;
 
+    const memoriesDir = this.getMemoriesDir(workspaceId);
     const memoriesStat = await this.safeStat(memoriesDir);
     const sessionCount = (await this.getSessionsByWorkspace(workspaceId)).length;
 

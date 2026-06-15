@@ -181,6 +181,50 @@ describe("MemoryParser.scanWorkspaces", () => {
     // repo(1) + session1(1) + session2(1) = 3
     expect(workspaces[0].sessionCount).toBe(3);
   });
+
+  it("当 memories 目录不存在时，放宽过滤仍应扫描到该工作区，但 sessionCount 应为 0", async () => {
+    // 创建一个只有 workspace.json 但没有 GitHub.copilot-chat 目录的假工作区
+    const emptyWorkspaceId = "00000000000000000000000000000000";
+    const wsDir = path.join(tmpDir, emptyWorkspaceId);
+    fs.mkdirSync(wsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(wsDir, "workspace.json"),
+      JSON.stringify({ folder: "file:///e%3A/projects/empty-project" }),
+      "utf8"
+    );
+
+    const parser = new MemoryParser({ basePath: tmpDir });
+    const workspaces = await parser.scanWorkspaces();
+    
+    // 应该扫描到 2 个工作区（原来的和新增的没有 memories 目录的）
+    expect(workspaces).toHaveLength(2);
+    const emptyWs = workspaces.find(w => w.id === emptyWorkspaceId);
+    expect(emptyWs).toBeDefined();
+    expect(emptyWs!.name).toBe("empty-project");
+    expect(emptyWs!.sessionCount).toBe(0);
+  });
+
+  it("应根据 filterRemoteWorkspaces 正确过滤远程工作区", async () => {
+    // 创建一个远程（vscode-remote 协议）工作区
+    const remoteWorkspaceId = "11111111111111111111111111111111";
+    const wsDir = path.join(tmpDir, remoteWorkspaceId);
+    fs.mkdirSync(wsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(wsDir, "workspace.json"),
+      JSON.stringify({ folder: "vscode-remote://wsl%2Bubuntu/home/projects/remote-project" }),
+      "utf8"
+    );
+
+    // 1. 不过滤远程工作区（filterRemoteWorkspaces: false），应该可以扫描到
+    const parserNoFilter = new MemoryParser({ basePath: tmpDir, filterRemoteWorkspaces: false });
+    const workspacesNoFilter = await parserNoFilter.scanWorkspaces();
+    expect(workspacesNoFilter.find(w => w.id === remoteWorkspaceId)).toBeDefined();
+
+    // 2. 过滤远程工作区（filterRemoteWorkspaces: true），应该过滤掉该工作区
+    const parserFilter = new MemoryParser({ basePath: tmpDir, filterRemoteWorkspaces: true });
+    const workspacesFilter = await parserFilter.scanWorkspaces();
+    expect(workspacesFilter.find(w => w.id === remoteWorkspaceId)).toBeUndefined();
+  });
 });
 
 // =========================================================================

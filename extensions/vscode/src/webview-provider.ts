@@ -130,9 +130,10 @@ export class MemoryBoardWebviewCore {
       this.parser = new MemoryParser({
         basePath,
         currentWorkspaceId: this.currentWorkspaceId,
+        filterRemoteWorkspaces: vscode.env.remoteName === undefined,
       });
       console.log(
-        `[Memory Board] MemoryParser initialized: workspaceId=${this.currentWorkspaceId}, basePath=${basePath}`,
+        `[Memory Board] MemoryParser initialized: workspaceId=${this.currentWorkspaceId}, basePath=${basePath}, filterRemoteWorkspaces=${vscode.env.remoteName === undefined}`,
       );
     } else {
       console.warn(
@@ -279,9 +280,10 @@ export class MemoryBoardWebviewCore {
       this.parser = new MemoryParser({
         basePath,
         currentWorkspaceId: this.currentWorkspaceId,
+        filterRemoteWorkspaces: vscode.env.remoteName === undefined,
       });
       outputChannel.appendLine(
-        `[Memory Board] MemoryParser reinitialized: workspaceId=${this.currentWorkspaceId}, basePath=${basePath}`
+        `[Memory Board] MemoryParser reinitialized: workspaceId=${this.currentWorkspaceId}, basePath=${basePath}, filterRemoteWorkspaces=${vscode.env.remoteName === undefined}`
       );
     } else {
       this.parser = undefined;
@@ -354,8 +356,181 @@ export class MemoryBoardWebviewCore {
     }
     // 全部扫描，覆盖所有 workspaceStorage/<hex32> 子目录
     const workspaces = await this.parser.scanWorkspaces();
-    this.workspacesCache = workspaces;
-    return workspaces;
+    const repaired = await this.repairWorkspacesForRemote(workspaces);
+    this.workspacesCache = repaired;
+    return repaired;
+  }
+
+  /**
+   * 在 WSL/远程环境下修复并丰富 Workspace 列表。
+   * 同时将所有解析出的属性输出到专用日志通道以便调试。
+   */
+  private async repairWorkspacesForRemote(workspaces: Workspace[]): Promise<Workspace[]> {
+    const isRemote = vscode.env.remoteName !== undefined;
+    const folders = vscode.workspace.workspaceFolders;
+
+    outputChannel.appendLine(`[Memory Board] Repairing workspaces: isRemote=${isRemote}, foldersCount=${folders?.length ?? 0}`);
+
+    // 获取 Windows 端的 AppData/Roaming 路径（仅在 WSL/远程环境下尝试）
+    let winWorkspaceStorageDirs: string[] = [];
+    if (isRemote) {
+      const winAppData = this.getWindowsAppDataRoamingInWsl();
+      if (winAppData) {
+        outputChannel.appendLine(`[Memory Board] Detected Windows AppData: ${winAppData}`);
+        // 检查可能存在的 VS Code 存储目录
+        for (const appName of ["Code", "Code - Insiders"]) {
+          const wsPath = path.join(winAppData, appName, "User", "workspaceStorage");
+          if (fs.existsSync(wsPath)) {
+            winWorkspaceStorageDirs.push(wsPath);
+            outputChannel.appendLine(`[Memory Board] Added Windows workspaceStorage search path: ${wsPath}`);
+          }
+        }
+      } else {
+        outputChannel.appendLine(`[Memory Board] Could not auto-detect Windows AppData in WSL.`);
+      }
+    }
+
+    const repairedWorkspaces: Workspace[] = [];
+
+    for (const ws of workspaces) {
+      let repairedName = ws.name;
+      let repairedPath = ws.path;
+
+      // 1. 如果是当前正在打开的工作区，优先使用 vscode.workspace.workspaceFolders 里的信息
+      const firstFolder = folders && folders[0];
+      if (this.currentWorkspaceId && ws.id === this.currentWorkspaceId && firstFolder) {
+        repairedName = firstFolder.name;
+        repairedPath = firstFolder.uri.fsPath;
+        outputChannel.appendLine(`[Memory Board] Repaired current workspace ${ws.id} using active WorkspaceFolder: name=${repairedName}, path=${repairedPath}`);
+      } else if (isRemote && winWorkspaceStorageDirs.length > 0) {
+        // 2. 对于 WSL/远程环境下的其他历史工作区，尝试从 Windows 端的 workspace.json 中读取配置
+        let readSuccessful = false;
+        for (const winWsStorage of winWorkspaceStorageDirs) {
+          const winJsonPath = path.join(winWsStorage, ws.id, "workspace.json");
+          if (fs.existsSync(winJsonPath)) {
+            try {
+              const raw = fs.readFileSync(winJsonPath, "utf8");
+              const obj = JSON.parse(raw) as { folder?: string; workspace?: string };
+              const folderUri = obj.folder ?? obj.workspace;
+              if (folderUri) {
+                // 如果是 vscode-remote 协议，解析出真实路径
+                if (folderUri.startsWith("vscode-remote:")) {
+                  const url = new URL(folderUri);
+                  const decodedPath = decodeURIComponent(url.pathname);
+                  repairedPath = decodedPath;
+                  repairedName = path.basename(decodedPath);
+                } else if (folderUri.startsWith("file:")) {
+                  // 如果是本地 file: 协议且以 Windows 路径为主，尝试将其转换为 WSL 挂载路径
+                  const winPath = this.uriToFsPathLocal(folderUri);
+                  repairedPath = this.winPathToWsl(winPath);
+                  repairedName = path.basename(repairedPath) || winPath;
+                }
+                readSuccessful = true;
+                outputChannel.appendLine(`[Memory Board] Resolved historical workspace ${ws.id} from Windows workspace.json: name=${repairedName}, path=${repairedPath}`);
+                break;
+              }
+            } catch (err) {
+              outputChannel.appendLine(`[Memory Board] Error reading Windows workspace.json for ${ws.id}: ${err}`);
+            }
+          }
+        }
+
+        // 3. 如果在 Windows 端也读不到，则直接降级使用 workspaceId 作为 name/path
+        if (!readSuccessful && (!repairedPath || repairedPath === ws.id)) {
+          repairedName = ws.id;
+          repairedPath = ws.id;
+          outputChannel.appendLine(`[Memory Board] Fallback historical workspace ${ws.id} to workspaceId`);
+        }
+      }
+
+      // 如果 repairedPath 是 Windows 路径，且我们在 WSL/远程环境，执行挂载路径转换
+      if (isRemote && repairedPath && /^[a-zA-Z]:\\/.test(repairedPath)) {
+        repairedPath = this.winPathToWsl(repairedPath);
+      }
+
+      const repairedWs = {
+        ...ws,
+        name: repairedName || ws.id,
+        path: repairedPath || "",
+      };
+
+      // 诊断日志输出到专用输出通道
+      outputChannel.appendLine(`[Memory Board Workspace Info] id: ${repairedWs.id}, name: ${repairedWs.name}, path: ${repairedWs.path}, sessions: ${repairedWs.sessionCount}`);
+      repairedWorkspaces.push(repairedWs);
+    }
+
+    return repairedWorkspaces;
+  }
+
+  /**
+   * 自动探测 WSL 中挂载的 Windows AppData Roaming 路径
+   */
+  private getWindowsAppDataRoamingInWsl(): string | undefined {
+    const pathParts = (process.env.PATH ?? "").split(path.delimiter);
+    for (const part of pathParts) {
+      // 匹配包含 Users 的 Windows 路径在 WSL 中的挂载路径
+      const match = part.match(/^(\/[^/]+\/[^/]+\/Users\/[^/]+)/);
+      if (match && match[1]) {
+        const winUserHome = match[1];
+        const appDataPath = path.join(winUserHome, "AppData", "Roaming");
+        if (fs.existsSync(appDataPath)) {
+          return appDataPath;
+        }
+      }
+    }
+
+    // 备用方案：扫描 /mnt/c/Users/ 下的用户目录
+    const mounts = ["/mnt/c/Users", "/c/Users"];
+    for (const mount of mounts) {
+      if (fs.existsSync(mount)) {
+        try {
+          const users = fs.readdirSync(mount);
+          for (const user of users) {
+            if (["default", "public", "all users", "desktop.ini"].includes(user.toLowerCase())) {
+              continue;
+            }
+            const appDataPath = path.join(mount, user, "AppData", "Roaming");
+            if (fs.existsSync(appDataPath)) {
+              return appDataPath;
+            }
+          }
+        } catch {
+          // 忽略读取错误
+        }
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * 转换 Windows 路径为 WSL 挂载路径
+   */
+  private winPathToWsl(winPath: string): string {
+    const match = winPath.match(/^([a-zA-Z]):\\(.*)$/);
+    if (match && match[1] && match[2] !== undefined) {
+      const drive = match[1].toLowerCase();
+      const rest = match[2].replace(/\\/g, "/");
+      return `/mnt/${drive}/${rest}`;
+    }
+    return winPath;
+  }
+
+  /**
+   * 从 file URI 解码出本地 file 路径
+   */
+  private uriToFsPathLocal(uriStr: string): string {
+    if (!uriStr.startsWith("file:")) {
+      return "";
+    }
+    try {
+      const parsed = new URL(uriStr);
+      const pathname = decodeURIComponent(parsed.pathname);
+      const isWinDrive = /^\/[a-zA-Z]:/.test(pathname);
+      const fsPath = isWinDrive ? pathname.slice(1) : pathname;
+      return fsPath.replace(/\//g, path.sep);
+    } catch {
+      return "";
+    }
   }
 
   // ---------------------------------------------------------------------------
