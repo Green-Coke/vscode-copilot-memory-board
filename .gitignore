@@ -39,3 +39,6 @@ test-results
 # VS Code 插件打包时自动拷贝的自述文件与证书（避免污染 Git 仓库）
 /extensions/vscode/README.md
 /extensions/vscode/LICENSE
+
+# 其他
+/docs/learning
