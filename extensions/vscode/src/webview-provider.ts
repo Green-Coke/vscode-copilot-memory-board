@@ -111,6 +111,16 @@ export class MemoryBoardWebviewCore {
    */
   private workspacesCache: Workspace[] | undefined;
 
+  /**
+   * 缓存各个 workspace 目录的字节大小。
+   */
+  private workspaceSizeCache: Map<string, number> = new Map();
+
+  /**
+   * 用于控制 workspace 大小计算的 AbortController，确保可以中途取消之前的任务。
+   */
+  private sizeComputeAbortController: AbortController | undefined;
+
   constructor(
     // 子类（ViewProvider / PanelManager）需要访问 context 订阅与 extensionUri 拼资源
     protected readonly extensionUri: vscode.Uri,
@@ -315,6 +325,19 @@ export class MemoryBoardWebviewCore {
       undefined,
       this.context.subscriptions
     );
+
+    // 首次 webview 就绪后，自动后台静默触发前 5 个工作区的大小计算
+    (async () => {
+      try {
+        const workspaces = await this.scanWorkspacesCached();
+        if (workspaces.length > 0) {
+          const initialIds = workspaces.slice(0, 5).map((w) => w.id);
+          this.triggerWorkspaceSizesComputation(initialIds, webview);
+        }
+      } catch (err) {
+        console.error("[Memory Board] 启动自动触发计算工作区大小异常:", err);
+      }
+    })();
   }
 
   /**
@@ -325,6 +348,12 @@ export class MemoryBoardWebviewCore {
   public async refresh(webview: vscode.Webview): Promise<void> {
     try {
       this.workspacesCache = undefined; // 强制刷新
+      this.workspaceSizeCache.clear();
+      if (this.sizeComputeAbortController) {
+        this.sizeComputeAbortController.abort();
+        this.sizeComputeAbortController = undefined;
+      }
+      
       const workspaces = await this.scanWorkspacesCached(true);
       webview.postMessage({
         type: MessageTypes.ON_WORKSPACES_CHANGED,
@@ -621,7 +650,7 @@ export class MemoryBoardWebviewCore {
           const { preferences: patch } = message.payload as {
             preferences: Partial<UiPreferences>;
           };
-          const next = this.writeUiPreferences(patch);
+          const next = await this.writeUiPreferences(patch);
 
           // 若修改了重定向 IDE 目标偏好，则重新解析工作区存储路径并重新扫描刷新
           if (patch.ideRedirectTarget !== undefined) {
@@ -633,6 +662,20 @@ export class MemoryBoardWebviewCore {
             type: message.type,
             requestId: message.requestId,
             payload: { preferences: next },
+            error: null,
+          };
+          break;
+        }
+
+        case MessageTypes.COMPUTE_WORKSPACE_SIZES: {
+          const { workspaceIds } = message.payload as unknown as { workspaceIds: string[] };
+          this.triggerWorkspaceSizesComputation(workspaceIds, webview);
+          response = {
+            type: message.type,
+            requestId: message.requestId,
+            payload: {
+              sizes: Object.fromEntries(this.workspaceSizeCache),
+            },
             error: null,
           };
           break;
@@ -653,7 +696,7 @@ export class MemoryBoardWebviewCore {
           const { state: patch } = message.payload as {
             state: Partial<WorkspaceState>;
           };
-          const next = this.writeWorkspaceState(patch);
+          const next = await this.writeWorkspaceState(patch);
           response = {
             type: message.type,
             requestId: message.requestId,
@@ -862,9 +905,9 @@ export class MemoryBoardWebviewCore {
   /**
    * 部分更新全局 UI 偏好（合并后整体回写 globalState），返回最新完整值
    */
-  private writeUiPreferences(patch: Partial<UiPreferences>): UiPreferences {
+  private async writeUiPreferences(patch: Partial<UiPreferences>): Promise<UiPreferences> {
     const next = { ...this.readUiPreferences(), ...patch };
-    void this.context.globalState.update(GLOBAL_UI_PREFERENCES_KEY, next);
+    await this.context.globalState.update(GLOBAL_UI_PREFERENCES_KEY, next);
     return next;
   }
 
@@ -884,9 +927,9 @@ export class MemoryBoardWebviewCore {
   /**
    * 部分更新工作区状态（合并后整体回写 workspaceState），返回最新完整值
    */
-  private writeWorkspaceState(patch: Partial<WorkspaceState>): WorkspaceState {
+  private async writeWorkspaceState(patch: Partial<WorkspaceState>): Promise<WorkspaceState> {
     const next = this.mergeWorkspaceState(this.readWorkspaceState(), patch);
-    void this.context.workspaceState.update(WORKSPACE_STATE_KEY, next);
+    await this.context.workspaceState.update(WORKSPACE_STATE_KEY, next);
     return next;
   }
 
@@ -1019,6 +1062,21 @@ export class MemoryBoardWebviewCore {
         (match) => `${match}\n  <meta http-equiv="Content-Security-Policy" content="${csp}">`
       );
     }
+
+    // 5) 注入初始状态，以消除前端首帧渲染闪烁问题
+    const uiPreferences = this.readUiPreferences();
+    const workspaceState = this.readWorkspaceState();
+    const initialState = {
+      uiPreferences,
+      workspaceState,
+      showRedirectSelector: this.showRedirectSelector,
+      language: vscode.env.language,
+    };
+    const initialStateScript = `<script nonce="${nonce}">window.__INITIAL_MEMORY_BOARD_STATE__ = ${JSON.stringify(initialState)};</script>`;
+    html = html.replace(
+      /<head[^>]*>/i,
+      (match) => `${match}\n  ${initialStateScript}`
+    );
 
     return html;
   }
@@ -1313,6 +1371,78 @@ export class MemoryBoardWebviewCore {
       }
     } while (counter < 100); // 安全上限
     return candidate;
+  }
+
+  /**
+   * 触发工作区大小计算。会先取消上一次仍在执行的计算任务，以确保单实例调度。
+   */
+  private triggerWorkspaceSizesComputation(
+    workspaceIds: string[],
+    webview: vscode.Webview
+  ): void {
+    if (this.sizeComputeAbortController) {
+      this.sizeComputeAbortController.abort();
+    }
+
+    this.sizeComputeAbortController = new AbortController();
+    const signal = this.sizeComputeAbortController.signal;
+
+    this.computeWorkspaceSizes(workspaceIds, webview, signal).catch((err) => {
+      console.error("[Memory Board] 运行 computeWorkspaceSizes 时发生未捕获异常:", err);
+    });
+  }
+
+  /**
+   * 后台静默串行地计算工作区大小。计算成功后写入缓存并通过 postMessage 推送通知。
+   * 优先计算当前激活的工作区。
+   */
+  private async computeWorkspaceSizes(
+    workspaceIds: string[],
+    webview: vscode.Webview,
+    signal: AbortSignal
+  ): Promise<void> {
+    if (!this.parser || !this.workspaceStoragePath) {
+      return;
+    }
+
+    // 优先调度：当前工作区排在最前
+    const currentId = this.currentWorkspaceId;
+    const sortedIds = [...workspaceIds];
+    if (currentId) {
+      const idx = sortedIds.indexOf(currentId);
+      if (idx !== -1) {
+        sortedIds.splice(idx, 1);
+        sortedIds.unshift(currentId);
+      }
+    }
+
+    for (const id of sortedIds) {
+      if (signal.aborted) {
+        break;
+      }
+
+      try {
+        const workspaceDir = path.join(this.workspaceStoragePath, id);
+        const size = await this.parser.calculateDirSize(workspaceDir);
+
+        if (signal.aborted) {
+          break;
+        }
+
+        this.workspaceSizeCache.set(id, size);
+
+        // 增量式推送：仅推送当前计算完毕的工作区大小，减小 postMessage 通信体数据量，前端收到后会自动 merge
+        webview.postMessage({
+          type: "onWorkspaceSizesChanged",
+          requestId: "",
+          payload: { sizes: { [id]: size } },
+          error: null,
+        });
+
+      } catch (err) {
+        console.warn(`[Memory Board] 计算目录大小失败 id=${id}:`, err);
+      }
+    }
   }
 }
 

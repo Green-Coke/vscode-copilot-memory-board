@@ -16,6 +16,7 @@ import {
   useCurrentWorkspace,
   useUiPreferences,
   useWorkspaceState,
+  useWorkspaceSizes,
 } from "@/hooks/use-bridge";
 import { AdaptiveLayout, Panel, WorkspaceCollapseButton, type ViewMode } from "@/components/Layout";
 import { useTranslation } from "react-i18next";
@@ -58,6 +59,7 @@ export function App() {
   const { preferences, showRedirectSelector, isAgy, update: updateUiPreferences } = useUiPreferences();
   const { state: workspaceState, update: updateWorkspaceState } =
     useWorkspaceState();
+  const { sizes, requestCompute } = useWorkspaceSizes();
 
   // ---------------------------------------------------------------------------
   // Data Fetching
@@ -245,6 +247,8 @@ export function App() {
         >
           <WorkspaceList
             workspaces={workspaces ?? []}
+            sizes={sizes}
+            requestCompute={requestCompute}
             selectedId={selectedWorkspace?.id ?? null}
             onSelect={handleSelectWorkspace}
             loading={workspacesLoading}

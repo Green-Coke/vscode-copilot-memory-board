@@ -51,6 +51,7 @@ const en = {
   // 工作区面板
   workspaces: {
     title: "Workspaces",
+    calculating: "calculating...",
     empty: {
       title: "No Workspaces",
       hint: "After using Copilot Chat in this workspace, memories will sync here automatically.",

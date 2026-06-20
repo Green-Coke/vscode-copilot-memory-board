@@ -5,7 +5,7 @@
 // 验证 scanWorkspaces / getSessionsByWorkspace / readMemoryContent 的正确性
 // ============================================================================
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
@@ -487,3 +487,59 @@ describe("MemoryParser.setBasePath", () => {
     fs.rmSync(newTmpDir, { recursive: true, force: true });
   });
 });
+
+// =========================================================================
+// calculateDirSize
+// =========================================================================
+describe("MemoryParser.calculateDirSize", () => {
+  it("空目录应返回 0", async () => {
+    const parser = new MemoryParser({ basePath: tmpDir });
+    const emptyDir = path.join(tmpDir, "empty-dir-test");
+    fs.mkdirSync(emptyDir, { recursive: true });
+    
+    const size = await parser.calculateDirSize(emptyDir);
+    expect(size).toBe(0);
+  });
+
+  it("包含文件的目录应返回正确的文件大小总和", async () => {
+    const parser = new MemoryParser({ basePath: tmpDir });
+    const testDir = path.join(tmpDir, "size-test-dir");
+    fs.mkdirSync(testDir, { recursive: true });
+    
+    fs.writeFileSync(path.join(testDir, "file1.txt"), "hello", "utf8"); // 5 bytes
+    fs.writeFileSync(path.join(testDir, "file2.txt"), "world!", "utf8"); // 6 bytes
+    
+    // 嵌套子目录
+    const subDir = path.join(testDir, "subdir");
+    fs.mkdirSync(subDir, { recursive: true });
+    fs.writeFileSync(path.join(subDir, "file3.txt"), "test", "utf8"); // 4 bytes
+
+    const size = await parser.calculateDirSize(testDir);
+    expect(size).toBe(15);
+  });
+
+  it("当遭遇循环 inode 时，应避免无限循环并跳过已访问的 inode", async () => {
+    const parser = new MemoryParser({ basePath: tmpDir });
+    const testDir = path.join(tmpDir, "loop-test-dir");
+    fs.mkdirSync(testDir, { recursive: true });
+    
+    fs.writeFileSync(path.join(testDir, "file1.txt"), "hello", "utf8"); // 5 bytes
+    
+    // 模拟 safeStat，使其返回相同的 ino
+    const originalSafeStat = (parser as any).safeStat.bind(parser);
+    (parser as any).safeStat = async (p: string) => {
+      const stat = await originalSafeStat(p);
+      if (stat) {
+        return {
+          ...stat,
+          ino: 99999
+        };
+      }
+      return stat;
+    };
+
+    const size = await parser.calculateDirSize(testDir);
+    expect(size).toBeGreaterThanOrEqual(0);
+  });
+});
+

@@ -433,6 +433,14 @@ async function handleStandaloneRequest(
         error: "Standalone 浏览器模式不支持文件写操作",
       };
     }
+    case "computeWorkspaceSizes": {
+      return {
+        type: "computeWorkspaceSizes",
+        requestId: request.requestId,
+        payload: { sizes: {} },
+        error: null,
+      };
+    }
     case "readExternalClipboardFiles": {
       return {
         type: "readExternalClipboardFiles",
@@ -547,4 +555,21 @@ export function destroyBridge(): void {
   initialized = false;
   vsCodeApiInstance = null;
 }
+
+/**
+ * 获取从 VS Code Host 端注入的初始状态（包括 UI 偏好、工作区状态、是否展示重定向以及语言）
+ * 仅在 VS Code Webview 下有效，在独立浏览器 standalone 模式下返回 null
+ */
+export function getInjectedInitialState(): {
+  uiPreferences?: UiPreferences;
+  workspaceState?: WorkspaceState;
+  showRedirectSelector?: boolean;
+  language?: string;
+} | null {
+  if (currentEnvironment !== "vscode") {
+    return null;
+  }
+  return (window as any).__INITIAL_MEMORY_BOARD_STATE__ || null;
+}
+
 

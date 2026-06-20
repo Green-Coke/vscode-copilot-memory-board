@@ -50,6 +50,7 @@ const zhCn = {
   // 工作区面板
   workspaces: {
     title: "工作区",
+    calculating: "计算中...",
     empty: {
       title: "暂无工作区",
       hint: "在本工作区使用 Copilot Chat 后，记忆会自动同步到此处。",

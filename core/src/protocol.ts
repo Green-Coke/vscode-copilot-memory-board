@@ -265,6 +265,17 @@ export interface ReadExternalClipboardFilesRequest {
 }
 
 /**
+ * 计算 workspace 目录大小的请求
+ */
+export interface ComputeWorkspaceSizesRequest {
+  type: "computeWorkspaceSizes";
+  requestId: string;
+  payload: {
+    workspaceIds: string[];
+  };
+}
+
+/**
  * Union of all possible request message types.
  */
 export type AnyRequest =
@@ -285,7 +296,8 @@ export type AnyRequest =
   | ImportExternalFileRequest
   | RevealInOsRequest
   | CopyPathToClipboardRequest
-  | ReadExternalClipboardFilesRequest;
+  | ReadExternalClipboardFilesRequest
+  | ComputeWorkspaceSizesRequest;
 
 // ---------------------------------------------------------------------------
 // Response Payloads (Host → GUI)
@@ -497,6 +509,18 @@ export interface ReadExternalClipboardFilesResponse {
 }
 
 /**
+ * 计算 workspace 目录大小的响应
+ */
+export interface ComputeWorkspaceSizesResponse {
+  type: "computeWorkspaceSizes";
+  requestId: string;
+  payload: {
+    sizes: Record<string, number>;
+  };
+  error: string | null;
+}
+
+/**
  * Union of all possible response message types.
  */
 export type AnyResponse =
@@ -517,7 +541,8 @@ export type AnyResponse =
   | ImportExternalFileResponse
   | RevealInOsResponse
   | CopyPathToClipboardResponse
-  | ReadExternalClipboardFilesResponse;
+  | ReadExternalClipboardFilesResponse
+  | ComputeWorkspaceSizesResponse;
 
 // ---------------------------------------------------------------------------
 // Push Messages (Host → GUI, unsolicited)
@@ -532,10 +557,19 @@ export interface WorkspacesChangedPush {
   error: null;
 }
 
+export interface WorkspaceSizesChangedPush {
+  type: "onWorkspaceSizesChanged";
+  requestId: "";
+  payload: {
+    sizes: Record<string, number>;
+  };
+  error: null;
+}
+
 /**
  * Union of all push message types.
  */
-export type AnyPushMessage = WorkspacesChangedPush;
+export type AnyPushMessage = WorkspacesChangedPush | WorkspaceSizesChangedPush;
 
 // ---------------------------------------------------------------------------
 // Message Type Helpers
@@ -565,6 +599,8 @@ export const MessageTypes = {
   REVEAL_IN_OS: "revealInOs",
   COPY_PATH_TO_CLIPBOARD: "copyPathToClipboard",
   READ_EXTERNAL_CLIPBOARD_FILES: "readExternalClipboardFiles",
+  COMPUTE_WORKSPACE_SIZES: "computeWorkspaceSizes",
+  ON_WORKSPACE_SIZES_CHANGED: "onWorkspaceSizesChanged",
 } as const;
 
 /**

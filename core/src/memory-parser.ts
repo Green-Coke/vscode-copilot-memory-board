@@ -396,6 +396,60 @@ export class MemoryParser {
   }
 
   /**
+   * 递归计算指定目录的物理总字节大小。
+   * 包含最大深度保护（30层）和符号链接循环保护（Set<ino>），
+   * 并在每处理 50 个文件时通过 setTimeout(0) 让出事件循环，避免阻塞主线程。
+   * 
+   * @param dir 目标目录路径
+   * @returns 目录总字节大小
+   */
+  async calculateDirSize(dir: string): Promise<number> {
+    const visitedInos = new Set<number>();
+    let fileCount = 0;
+
+    const recurse = async (currentDir: string, depth: number): Promise<number> => {
+      // 深度防护：超过 30 层则终止递归
+      if (depth > 30) {
+        return 0;
+      }
+
+      const entries = await this.safeReadDir(currentDir);
+      let totalSize = 0;
+
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+        const stat = await this.safeStat(fullPath);
+        if (!stat) {
+          continue;
+        }
+
+        // 符号链接/循环依赖防护：记录 inode
+        if (stat.ino !== undefined) {
+          if (visitedInos.has(stat.ino)) {
+            continue;
+          }
+          visitedInos.add(stat.ino);
+        }
+
+        if (entry.type === "file") {
+          totalSize += stat.size;
+          fileCount++;
+          // 每扫描 50 个文件让出一次 CPU，防止卡顿
+          if (fileCount % 50 === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+        } else if (entry.type === "directory") {
+          totalSize += await recurse(fullPath, depth + 1);
+        }
+      }
+
+      return totalSize;
+    };
+
+    return recurse(dir, 0);
+  }
+
+  /**
    * 递归统计目录下所有普通文件的数量（不再按扩展名过滤）。
    * 用于 Session.entryCount / Repo session.entryCount 字段。
    */

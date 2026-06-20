@@ -5,6 +5,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { Workspace, SortOption, UiPreferences } from "@memory-board/core";
+import { formatBytes } from "@/lib/format-utils";
+import { getBridgeEnvironment } from "@/lib/bridge";
 import { cn } from "@/lib/utils";
 import { FolderGit2, Clock, ChevronRight, Search, X, Link, FolderOpen } from "lucide-react";
 import { PinnedButton } from "@/components/PinnedButton";
@@ -18,6 +20,10 @@ import { FilterDropdown } from "@/components/FilterDropdown";
 interface WorkspaceListProps {
   /** 工作区列表 */
   workspaces: Workspace[];
+  /** 各个工作区目录大小 Map */
+  sizes?: Record<string, number>;
+  /** 触发工作区大小计算的回调 */
+  requestCompute?: (ids: string[]) => void;
   /** 当前选中的工作区 ID */
   selectedId: string | null;
   /** 选中某个工作区时的回调 */
@@ -48,6 +54,8 @@ interface WorkspaceListProps {
 
 export function WorkspaceList({
   workspaces,
+  sizes,
+  requestCompute,
   selectedId,
   onSelect,
   loading,
@@ -76,6 +84,8 @@ export function WorkspaceList({
   useEffect(() => {
     setVisibleCount(5);
   }, [searchQuery, sortOption, onlyShowWithMemories]);
+
+
 
   // ---------------------------------------------------------------------------
   // 搜索过滤 + 仅展示有记忆过滤 + 排序 + 钉选分组
@@ -107,6 +117,23 @@ export function WorkspaceList({
   }, [unpinned, visibleCount]);
 
   const hasMore = unpinned.length > visibleCount;
+
+  // 使用序列化后的字符串作为依赖项，规避派生数组引用变化导致频繁 AbortController 撤销/重启
+  const visibleIdsStr = useMemo(() => {
+    return [
+      ...pinned.map((w) => w.id),
+      ...visibleUnpinned.map((w) => w.id),
+    ].join(",");
+  }, [pinned, visibleUnpinned]);
+
+  // 当可见的工作区变化时，请求后台重新计算其目录大小
+  useEffect(() => {
+    if (getBridgeEnvironment() === "standalone" || !requestCompute || !visibleIdsStr) {
+      return;
+    }
+    const visibleIds = visibleIdsStr.split(",");
+    requestCompute(visibleIds);
+  }, [visibleIdsStr, requestCompute]);
 
   /** 切换某工作区的钉选状态 */
   const togglePin = (workspaceId: string) => {
@@ -294,6 +321,7 @@ export function WorkspaceList({
   function renderWorkspace(workspace: Workspace, index: number, isPinned: boolean) {
     const isSelected = selectedId === workspace.id;
     const workspacePinned = pinnedIds.includes(workspace.id);
+    const size = sizes?.[workspace.id];
 
     // 复制工作区项目根目录的物理路径
     const handleCopyPath = async (e: Event) => {
@@ -399,6 +427,14 @@ export function WorkspaceList({
                   <Clock className="w-2.5 h-2.5" />
                   {formatRelativeTime(workspace.lastModified)}
                 </span>
+                {getBridgeEnvironment() !== "standalone" && (
+                  <>
+                    <span className="text-text-muted">•</span>
+                    <span className="text-text-muted" data-testid={`workspace-size-${workspace.id}`}>
+                      {size !== undefined ? formatBytes(size) : t("workspaces.calculating")}
+                    </span>
+                  </>
+                )}
               </div>
               {/* Truncated workspace folder path display */}
               <span className="block text-[8px] font-mono text-text-muted/65 truncate mt-0.5">

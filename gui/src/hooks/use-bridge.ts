@@ -18,7 +18,7 @@ import {
   DEFAULT_UI_PREFERENCES,
   DEFAULT_WORKSPACE_STATE,
 } from "@memory-board/core";
-import { sendRequest, onPushMessage } from "@/lib/bridge";
+import { sendRequest, onPushMessage, getInjectedInitialState } from "@/lib/bridge";
 import i18n, { isSupportedLocale } from "@/i18n";
 
 // ---------------------------------------------------------------------------
@@ -185,14 +185,28 @@ interface UiPreferencesState {
  * 初始渲染使用 DEFAULT_UI_PREFERENCES，加载完成后替换为持久层返回值。
  */
 export function useUiPreferences(): UiPreferencesState {
+  const injected = getInjectedInitialState();
   const [preferences, setPreferences] = useState<UiPreferences>(
-    DEFAULT_UI_PREFERENCES
+    injected?.uiPreferences ?? DEFAULT_UI_PREFERENCES
   );
-  const [showRedirectSelector, setShowRedirectSelector] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [showRedirectSelector, setShowRedirectSelector] = useState(
+    injected?.showRedirectSelector ?? false
+  );
+  const [loading, setLoading] = useState(!injected?.uiPreferences);
 
-  // 初始加载：从 bridge 拉取一次
+  // 初始加载：从 bridge 拉取一次（若没有注入的初始状态）
   useEffect(() => {
+    // 如果有注入的状态，直接同步处理语言即可，不需要再去发请求
+    if (injected?.uiPreferences) {
+      if (injected.language) {
+        const targetLocale = isSupportedLocale(injected.language);
+        if (i18n.language !== targetLocale) {
+          void i18n.changeLanguage(targetLocale);
+        }
+      }
+      return;
+    }
+
     let active = true;
     (async () => {
       try {
@@ -206,8 +220,6 @@ export function useUiPreferences(): UiPreferencesState {
           preferences: UiPreferences;
           showRedirectSelector?: boolean;
           isAgy?: boolean;
-          // 扩展端注入的当前显示语言（vscode.env.language，如 "zh-cn"/"en"/"en-US"）
-          // 可选：standalone 模式下不存在，沿用 i18n 初始化时根据 navigator.language 选定的默认语言
           language?: string;
         };
         setPreferences({ ...DEFAULT_UI_PREFERENCES, ...payload.preferences });
@@ -237,7 +249,7 @@ export function useUiPreferences(): UiPreferencesState {
     return () => {
       active = false;
     };
-  }, []);
+  }, [injected]);
 
   const update = useCallback(async (patch: Partial<UiPreferences>) => {
     try {
@@ -271,10 +283,16 @@ interface WorkspaceStateHook {
  * 初始渲染使用 DEFAULT_WORKSPACE_STATE，加载完成后替换为持久层返回值。
  */
 export function useWorkspaceState(): WorkspaceStateHook {
-  const [state, setState] = useState<WorkspaceState>(cloneDefaultWorkspace());
-  const [loading, setLoading] = useState(true);
+  const injected = getInjectedInitialState();
+  const [state, setState] = useState<WorkspaceState>(
+    injected?.workspaceState ?? cloneDefaultWorkspace()
+  );
+  const [loading, setLoading] = useState(!injected?.workspaceState);
 
   useEffect(() => {
+    if (injected?.workspaceState) {
+      return;
+    }
     let active = true;
     (async () => {
       try {
@@ -295,7 +313,7 @@ export function useWorkspaceState(): WorkspaceStateHook {
     return () => {
       active = false;
     };
-  }, []);
+  }, [injected]);
 
   const update = useCallback(async (patch: Partial<WorkspaceState>) => {
     try {
@@ -475,3 +493,32 @@ export function useReadExternalClipboardFiles() {
     return { paths: payload.paths ?? [], unsupported: payload.unsupported };
   }, []);
 }
+
+interface WorkspaceSizesState {
+  sizes: Record<string, number>;
+  requestCompute: (ids: string[]) => void;
+}
+
+/**
+ * 监听各个工作区大小的推送更新，并提供请求计算函数的 React hook
+ */
+export function useWorkspaceSizes(): WorkspaceSizesState {
+  const [sizes, setSizes] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const unsub = onPushMessage((msg: AnyPushMessage) => {
+      if (msg.type === "onWorkspaceSizesChanged") {
+        const payload = msg.payload as { sizes: Record<string, number> };
+        setSizes((prev) => ({ ...prev, ...payload.sizes }));
+      }
+    });
+    return unsub;
+  }, []);
+
+  const requestCompute = useCallback((workspaceIds: string[]) => {
+    void sendRequest("computeWorkspaceSizes", { workspaceIds });
+  }, []);
+
+  return { sizes, requestCompute };
+}
+
