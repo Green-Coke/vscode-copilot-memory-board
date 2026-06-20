@@ -53,6 +53,15 @@ function getWindowsAppDataRoamingInWsl(): string | undefined {
 }
 ```
 
+> **⚠️ 该探测方式的局限与 fallback**
+>
+> 该正则 `/^(\/[^/]+\/[^/]+\/Users\/[^/]+)/` 假设 Windows 系统挂载在标准的 `/mnt/<drive>/Users/<username>` 路径下。**以下场景会探测失败**:
+> - 用户在 `/etc/wsl.conf` 中自定义了 mount 位置(如 `[automount] root = /windows/`)
+> - WSL2 默认 mount root 被改成 `/run/...` 等非 `/mnt` 前缀
+> - 某些精简 PATH 的容器化 WSL 环境(如 docker-desktop)PATH 中不包含 Windows 用户目录
+>
+> **fallback 策略**:建议在调用方加上以下兜底,若 `getWindowsAppDataRoamingInWsl()` 返回 `undefined`,则提示用户通过 `MEMORY_BOARD_WS_STORAGE_OVERRIDE` 环境变量显式指定路径(参见 `gui/vite-plugin-memory-board.ts` 中 standalone 模式的同名机制),或回退到 "无法跨盘读取 Windows 缓存" 的优雅降级提示。
+
 ### 2.2 跨盘读取 `workspace.json`
 获取到 Windows 的 `AppData/Roaming` 后，拼接处 Windows 端 `workspaceStorage` 的绝对路径，并读取指定 `workspaceId` 的 `workspace.json`：
 

@@ -18,14 +18,17 @@
 
 ### 2.1 增加 `NarrowHeader` 的动作卡槽（Action Slot）
 
-在窄屏导航栏组件 `NarrowHeader` 的 `NarrowHeaderProps` 中，增加一个可选的 `action` 插槽：
+在窄屏导航栏组件 `NarrowHeader` 的动作卡槽实现中（对应 `gui/src/components/Layout.tsx`）,定义如下接口(已校对与实际源码一致):
 
 ```tsx
 interface NarrowHeaderProps {
+  /** 当前视图模式(决定标题文案与后退行为) */
   currentView: ViewMode;
-  selectedWorkspace: any;
-  selectedSession: any;
+  /** 当前选中的工作区(用于显示标题);未选中时为 null */
+  title: string;
+  /** 后退到工作区列表的回调 */
   onBackToWorkspaces?: () => void;
+  /** 后退到会话列表的回调 */
   onBackToSessions?: () => void;
   /** 当前是否正处于工作区级目录视图 */
   viewingWorkspaceFiles?: boolean;
@@ -39,8 +42,7 @@ interface NarrowHeaderProps {
 ```tsx
 function NarrowHeader({
   currentView,
-  selectedWorkspace,
-  selectedSession,
+  title,
   onBackToWorkspaces,
   onBackToSessions,
   viewingWorkspaceFiles = false,
@@ -66,6 +68,9 @@ function NarrowHeader({
   );
 }
 ```
+
+> [!NOTE]
+> **本节已修订(2026-06-20)**:旧版文档中 `NarrowHeaderProps` 误列了 `selectedWorkspace: any` 与 `selectedSession: any` 两个字段,实际项目源码 `gui/src/components/Layout.tsx` **没有**这两个字段(改为更简洁的 `title: string` 直接传入解析好的标题)。按旧文档实现会产生 TypeScript 类型不匹配。本修订已与源码对齐。
 
 ### 2.2 响应式隐藏原本独占一行的操作栏
 

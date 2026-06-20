@@ -74,24 +74,33 @@ export function ItemComponent({ item }) {
 > [!IMPORTANT]
 > **事件冒泡处理**：Radix 的 `onSelect` 在执行时并不会在 DOM 树中向上冒泡，因为 Portal 会把菜单挂载到 `body` 根节点下。但是在右键点击时需要注意触发层自身的选中状态（如触发 `onClick`），我们在自定义的动作处理器中使用 `e.stopPropagation()` 保护防止其它副作用。
 
+> [!IMPORTANT]
+> **架构说明 — Bridge 中间层**
+> 上面 Webview 端的 `useCopyPath` / `useRevealInOs` Hook **并不直接调用** VS Code API,而是通过 Bridge 协议层发送消息:
+> - `useCopyPath(path)` → 发送 `MessageTypes.COPY_PATH_TO_CLIPBOARD` 请求
+> - `useRevealInOs(path)` → 发送 `MessageTypes.REVEAL_IN_OS` 请求
+> 扩展端在 `webview-provider.ts` 的消息分发中接收这些请求并调用下方 VS Code API。完整的请求-响应信封定义见 `core/src/protocol.ts` 的 `MessageTypes` 常量。
+
 ---
 
 ## 2. VS Code 宿主端 API (Extension API)
 
-Webview 自身受到沙箱限制，无法直接访问操作系统的剪贴板 and 执行系统命令，必须通过 `postMessage` 通信将请求发送至 VS Code 扩展端去调用 VS Code API 执行。
+Webview 自身受到沙箱限制，无法直接访问操作系统的剪贴板 and 执行系统命令，必须通过 **Bridge postMessage 通信** 将请求发送至 VS Code 扩展端(见上面架构说明),再由扩展端调用下方 VS Code API 执行。
 
 ### 2.1 复制绝对路径到系统剪贴板
-VS Code 提供了 `vscode.env.clipboard` 对象，用于跨平台安全地读写剪贴板。
+VS Code 提供了 `vscode.env.clipboard` 对象，用于跨平台安全地读写剪贴板。**注意**:扩展端通过 `COPY_PATH_TO_CLIPBOARD` 消息触发此调用,而非 Webview 直接调用。
 
-- **写入路径 API**：
+- **写入路径 API**(在 `webview-provider.ts` 的 `handleCopyPathToClipboard` 中):
   ```typescript
   await vscode.env.clipboard.writeText(filePath);
   ```
 
-### 2.2 在系统资源管理器中打开目录/文件 (OS Reveal)
-VS Code 提供了内置命令 `revealFileInOS`，能够直接唤起操作系统的文件管理器（如 Windows 资源管理器、macOS Finder），并将对应的文件或文件夹高亮选中显示。
+> **关于 VS Code 内置 `copyFilePath` 命令**:VS Code 虽然提供内置 `copyFilePath` 命令,但**本项目未使用**。原因:内置命令依赖当前选中的资源管理器条目,不适合 Webview 文件树场景下指定任意路径。本项目一律走自定义 Bridge 协议确保路径来源明确。
 
-- **调用内置命令**：
+### 2.2 在系统资源管理器中打开目录/文件 (OS Reveal)
+VS Code 提供了内置命令 `revealFileInOS`，能够直接唤起操作系统的文件管理器（如 Windows 资源管理器、macOS Finder），并将对应的文件或文件夹高亮选中显示。本项目通过 `REVEAL_IN_OS` 消息触发此命令。
+
+- **调用内置命令**(在 `webview-provider.ts:834` 的 `handleRevealInOs` 中):
   ```typescript
   // 必须将绝对路径转化为 vscode.Uri
   await vscode.commands.executeCommand(
