@@ -1,14 +1,141 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "诊断版打包 VSIX",
-			"type": "shell",
-			"command": "pnpm",
-			"args": [
-				"package:vsix"
-			],
-			"isBackground": false
-		}
-	]
+  // ============================================================================
+  // tasks.json — Memory Board 构建任务定义
+  // ============================================================================
+  // 任务依赖关系(改了对应的代码就重跑对应任务):
+  //   core 改动       → pnpm --filter @memory-board/core build
+  //   gui 改动        → pnpm --filter @memory-board/gui build
+  //                     然后  Build Webview (copy)  拷贝到扩展资源目录
+  //   扩展端改动      → pnpm --filter vscode-copilot-memory-board build
+  //                     (esbuild 通过 alias 直接引 core/src,不依赖 core/dist)
+  //
+  // F5 启动 EDH(preLaunchTask=Build All) 时会自动跑全量构建。
+  // 设计原则:**所有任务都是同步**(不设 isBackground=true),
+  // 避免 background problemMatcher 配置错误导致 F5 卡死等问题。
+  // ============================================================================
+  "version": "2.0.0",
+  "tasks": [
+    // ------------------------------------------------------------------
+    // 全量构建(顺序执行): core → gui → 拷贝 webview → 扩展 bundle
+    // F5 时这个任务会执行后退出,VS Code 看到任务完成会立即启动 EDH。
+    // ------------------------------------------------------------------
+    {
+      "label": "Memory Board: Build All (dev)",
+      "dependsOn": [
+        "Memory Board: Build Core",
+        "Memory Board: Build GUI",
+        "Memory Board: Build Webview (copy)",
+        "Memory Board: Build Extension"
+      ],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Memory Board: Build Core",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "@memory-board/core", "build"],
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Memory Board: Build GUI",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "@memory-board/gui", "build"],
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      // 仅拷贝 gui/dist → extensions/vscode/resources/webview
+      // 用于:GUI 已 build 完,只更新扩展读取的 webview 资源
+      "label": "Memory Board: Build Webview (copy)",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "./extensions/vscode", "run", "build:webview"],
+      "problemMatcher": []
+    },
+    {
+      // 仅构建扩展端(esbuild bundle)
+      // 用于:只改了 extensions/vscode/src/** 或 core/src/**
+      "label": "Memory Board: Build Extension",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "vscode-copilot-memory-board", "build"],
+      "problemMatcher": []
+    },
+
+    // ------------------------------------------------------------------
+    // 单包 watch(高频改动扩展端代码时手动启动用)
+    //
+    // 这些任务**不**设为 isBackground。手动 Run Task 启动后让它常驻终端,
+    // 改完代码后在 EDH 窗口按 Ctrl+R 重载即可。
+    // 不要把它们设为某个 launch 配置的 preLaunchTask(会永久挂起),
+    // 因为同步执行的 Build All (dev) 已经能保证 F5 时产物是最新的。
+    // ------------------------------------------------------------------
+    {
+      "label": "Memory Board: Watch Extension",
+      "type": "shell",
+      "command": "pnpm",
+      "args": [
+        "--filter",
+        "vscode-copilot-memory-board",
+        "exec",
+        "node",
+        "esbuild.config.mjs",
+        "--watch"
+      ],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Memory Board: Watch GUI",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "@memory-board/gui", "dev"],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Memory Board: Watch Core",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "@memory-board/core", "dev"],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+
+    // ------------------------------------------------------------------
+    // 其它实用任务
+    // ------------------------------------------------------------------
+    {
+      // 清理所有 dist / webview 资源,遇诡异缓存问题时先跑这个
+      "label": "Memory Board: Clean",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["clean"],
+      "problemMatcher": []
+    },
+    {
+      "label": "诊断版打包 VSIX",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["package:vsix"],
+      "isBackground": false
+    }
+  ]
 }

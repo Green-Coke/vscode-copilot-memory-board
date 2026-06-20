@@ -1,0 +1,38 @@
+{
+  // ============================================================================
+  // launch.json — 按 F5 启动 VS Code Extension Development Host
+  // ============================================================================
+  // 按 F5 后弹出一个标题带 "Extension Development Host" 的独立 VS Code 窗口,
+  // 加载本仓库未打包的扩展源码,无需 `pnpm package:vsix`。
+  //
+  // 断点调试:
+  //   - 直接在 extensions/vscode/src/**/*.ts 打红点,F5 启动后命中
+  //   - 前端 React 调试走 EDH 窗口内 webview DevTools
+  //     (Ctrl+Shift+P → "Developer: Open Webview Developer Tools")
+  //
+  // 改完代码刷新:
+  //   - 改扩展端 TS → EDH 窗口按 Ctrl+R
+  //   - 改 core/**      → 同上(esbuild 通过 alias 直接引源码)
+  //   - 改 gui/**(React/CSS)→ 任务:Build GUI + Build Webview (copy) → EDH 窗口 Ctrl+R
+  // ============================================================================
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}\\extensions\\vscode",
+        "${env:USERPROFILE}\\.memory-board-dev-workspace"
+      ],
+      "name": "启动扩展",
+      "outFiles": [
+        "${workspaceFolder}/extensions/vscode/dist/**/*.js"
+      ],
+      "preLaunchTask": "Memory Board: Build All (dev)",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "sourceMaps": true,
+      "debugWebviews": false,
+      "debugWebWorkerHost": false,
+      "type": "extensionHost"
+    }
+  ]
+}
